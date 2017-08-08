@@ -1,0 +1,109 @@
+html, body {
+    padding: 0;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 135%;
+}
+
+a {
+    color: #003b80;
+}
+
+address {
+    font-style: normal;
+}
+
+section.about-me > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+}
+
+section.about-me > div > div:first-of-type {
+    margin-left: 5em;
+}
+
+
+section.about-me img {
+    width: 100%;
+}
+
+section.about-me > div > div:last-of-type {
+    flex-basis: 20em;
+    flex-grow: 0;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+section.timeline > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+section.timeline > div > div {
+
+}
+
+section.timeline > div > div:first-child {
+    flex-basis: 10em;
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+@media screen {
+    body {
+        margin: 2cm auto;
+        max-width: 1000px;
+    }
+
+    .fa-telegram {
+        color: #30a8dc;
+    }
+
+    .fa-whatsapp {
+        color: #25d366;
+    }
+}
+
+@page {
+    size: A4;
+    margin: 2cm;
+}
+
+@media print {
+/*
+    header {
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+*/
+    .text {
+        text-align: justify;
+    }
+
+    section {
+        page-break-inside: avoid;
+        page-break-after: avoid;
+    }
+
+    a {
+        color: black;
+        text-decoration: none;
+    }
+
+    section.about-me > div > div:last-of-type {
+        flex-basis: 5cm;
+    }
+}

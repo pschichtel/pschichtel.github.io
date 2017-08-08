@@ -1,0 +1,7 @@
+.de-DE .enquote:before, .enquote.de-DE .enquote:before {
+    content: "„";
+}
+
+.de-DE .enquote:after, .enquote.de-DE .enquote:after {
+    content: "”";
+}
