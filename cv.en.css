@@ -1,0 +1,7 @@
+[lang=en] .enquote:before, .enquote[lang=en] .enquote:before {
+    content: "\"";
+}
+
+[lang=en] .enquote:after, .enquote[lang=en] .enquote:after {
+    content: "\"";
+}

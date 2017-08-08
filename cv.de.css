@@ -1,0 +1,7 @@
+[lang=de] .enquote:before, .enquote[lang=de] .enquote:before {
+    content: "„";
+}
+
+[lang=de] .enquote:after, .enquote[lang=de] .enquote:after {
+    content: "”";
+}

@@ -17,30 +17,30 @@ address {
     font-style: normal;
 }
 
-section.about-me > div {
+section#aboutme > div {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: space-between;
 }
 
-section.about-me > div > div > div {
+section#aboutme > div > div > div {
     margin-top: 0.5em;
 }
 
-section.about-me address + div > div {
+section#aboutme address + div > div {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
 }
 
-section.about-me address + div > div > div:first-of-type {
+section#aboutme address + div > div > div:first-of-type {
     flex-basis: 5em;
     flex-grow: 0;
     flex-shrink: 0;
 }
 
-section.about-me address + div > div > div:first-of-type:after {
+section#aboutme address + div > div > div:first-of-type:after {
     content: ":";
 }
 
@@ -49,16 +49,16 @@ section > h2 {
     margin-bottom: 1em;
 }
 
-section.about-me > div > div:first-of-type {
+section#aboutme > div > div:first-of-type {
     margin-left: 5em;
 }
 
 
-section.about-me img {
+section#aboutme img {
     width: 100%;
 }
 
-section.about-me > div > div:last-of-type {
+section#aboutme > div > div:last-of-type {
     flex-basis: 5.5cm;
     flex-grow: 0;
     flex-shrink: 0;
