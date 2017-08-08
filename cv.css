@@ -5,6 +5,8 @@ html, body {
     font-size: 12pt;
     line-height: 135%;
     text-align: justify;
+    word-wrap: break-word;
+    hyphens: auto;
 }
 
 a {
@@ -33,9 +35,13 @@ section.about-me address + div > div {
 }
 
 section.about-me address + div > div > div:first-of-type {
-    flex-basis: 4.5em;
+    flex-basis: 5em;
     flex-grow: 0;
     flex-shrink: 0;
+}
+
+section.about-me address + div > div > div:first-of-type:after {
+    content: ":";
 }
 
 section > h2 {
@@ -72,7 +78,7 @@ section.timeline > div > div {
 }
 
 section.timeline > div > div:first-child {
-    flex-basis: 10em;
+    flex-basis: 10.5em;
     flex-shrink: 0;
     flex-grow: 0;
 }
@@ -87,7 +93,7 @@ ul {
     body {
         margin: 2cm auto;
         max-width: 210mm;
-        font-family: Helvetica, Verdana, sans-serif;
+        font-family: Verdana, sans-serif;
     }
 
     .fa-telegram {
