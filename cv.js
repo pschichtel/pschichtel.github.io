@@ -1,5 +1,4 @@
-window.addEventListener('DOMContentLoaded', function() {
-
+(function() {
     var name = document.getElementById('name').innerHTML;
     var emailAddress = name.toLowerCase().replace(' ', '@').replace(/(tel)$/, '.$1');
 
@@ -12,4 +11,4 @@ window.addEventListener('DOMContentLoaded', function() {
             window.location.href = 'mailto:' + emailAddress;
         });
     }
-});
+})();

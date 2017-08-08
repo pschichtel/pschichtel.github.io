@@ -4,6 +4,7 @@ html, body {
     font-family: Arial, sans-serif;
     font-size: 12pt;
     line-height: 135%;
+    text-align: justify;
 }
 
 a {
@@ -21,6 +22,27 @@ section.about-me > div {
     justify-content: space-between;
 }
 
+section.about-me > div > div > div {
+    margin-top: 0.5em;
+}
+
+section.about-me address + div > div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+section.about-me address + div > div > div:first-of-type {
+    flex-basis: 4.5em;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+section > h2 {
+    margin-top: 2em;
+    margin-bottom: 1em;
+}
+
 section.about-me > div > div:first-of-type {
     margin-left: 5em;
 }
@@ -31,7 +53,7 @@ section.about-me img {
 }
 
 section.about-me > div > div:last-of-type {
-    flex-basis: 20em;
+    flex-basis: 5.5cm;
     flex-grow: 0;
     flex-shrink: 0;
     overflow: hidden;
@@ -64,7 +86,8 @@ ul {
 @media screen {
     body {
         margin: 2cm auto;
-        max-width: 1000px;
+        max-width: 210mm;
+        font-family: Helvetica, Verdana, sans-serif;
     }
 
     .fa-telegram {
@@ -82,15 +105,8 @@ ul {
 }
 
 @media print {
-/*
-    header {
-        position: fixed;
-        top: 0;
-        left: 0;
-    }
-*/
-    .text {
-        text-align: justify;
+    body {
+        font-family: Georgia, serif;
     }
 
     section {
@@ -101,9 +117,5 @@ ul {
     a {
         color: black;
         text-decoration: none;
-    }
-
-    section.about-me > div > div:last-of-type {
-        flex-basis: 5cm;
     }
 }
