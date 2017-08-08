@@ -1,5 +1,5 @@
 (function() {
-    var name = document.getElementById('name').innerHTML;
+    var name = document.querySelector('section#aboutme address > div:first-of-type').innerHTML;
     var emailAddress = name.toLowerCase().replace(' ', '@').replace(/(tel)$/, '.$1');
 
     var emailLinks = document.querySelectorAll('a.email');
