@@ -1,0 +1,7 @@
+body.en-US .enquote:before, .enquote.en-US .enquote:before {
+    content: "\"";
+}
+
+body.en-US .enquote:after, .enquote.en-US .enquote:after {
+    content: "\"";
+}
