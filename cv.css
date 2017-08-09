@@ -7,6 +7,9 @@ html, body {
     text-align: justify;
     word-wrap: break-word;
     hyphens: auto;
+    transition-duration: 0.8s;
+    transition-property: color, background-color;
+    transition-timing-function: ease-in-out;
 }
 
 body.dark {
