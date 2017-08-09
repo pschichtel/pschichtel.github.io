@@ -11,4 +11,12 @@
             window.location.href = 'mailto:' + emailAddress;
         });
     }
+
+    function lightSwitch(e) {
+        document.body.className = e.target.checked ? 'dark' : '';
+    }
+
+    var lightSwitchElem = document.getElementById('darkmode');
+    lightSwitchElem.addEventListener('click', lightSwitch);
+    lightSwitch({target: lightSwitchElem})
 })();

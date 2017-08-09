@@ -9,6 +9,15 @@ html, body {
     hyphens: auto;
 }
 
+body.dark {
+    color: white;
+    background-color: black;
+}
+
+body.dark a {
+    color: #0094ff;
+}
+
 a {
     color: #003b80;
 }
@@ -113,6 +122,10 @@ ul {
 @media print {
     body {
         font-family: Georgia, serif;
+    }
+
+    #toggles {
+        display: none;
     }
 
     section {
