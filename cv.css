@@ -23,6 +23,12 @@ body.dark a {
 
 a {
     color: #003b80;
+    transition: color 0.8s ease-in-out;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
 }
 
 address {
@@ -63,6 +69,8 @@ section > h2 {
 
 section#aboutme > div > div:first-of-type {
     margin-left: 5em;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 
@@ -75,6 +83,7 @@ section#aboutme > div > div:last-of-type {
     flex-grow: 0;
     flex-shrink: 0;
     overflow: hidden;
+    margin-left: 1em;
 }
 
 section.timeline > div {
