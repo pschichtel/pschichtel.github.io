@@ -153,4 +153,12 @@ ul {
         color: black;
         text-decoration: none;
     }
+
+    abbr {
+        text-decoration: none;
+    }
+
+    abbr[title]:after {
+        content: ' (' attr(title) ')';
+    }
 }
