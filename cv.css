@@ -116,8 +116,12 @@ ul {
     }
 
     section {
-        page-break-inside: avoid;
         page-break-after: avoid;
+        page-break-inside: avoid;
+    }
+
+    section.timeline > div {
+        page-break-inside: avoid;
     }
 
     a {
