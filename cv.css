@@ -12,15 +12,6 @@ html, body {
     transition-timing-function: ease-in-out;
 }
 
-body.dark {
-    color: white;
-    background-color: black;
-}
-
-body.dark a {
-    color: #0094ff;
-}
-
 a {
     color: #003b80;
     transition: color 0.8s ease-in-out;
@@ -115,6 +106,15 @@ ul {
         margin: 2cm auto;
         max-width: 210mm;
         font-family: Verdana, sans-serif;
+    }
+
+    body.dark {
+        color: white;
+        background-color: black;
+    }
+
+    body.dark a {
+        color: #0094ff;
     }
 
     .fa-telegram {
