@@ -1,0 +1,22 @@
+body {
+    margin: 2cm auto;
+    max-width: 210mm;
+    font-family: Verdana, sans-serif;
+}
+
+body.dark {
+    color: white;
+    background-color: black;
+}
+
+body.dark a {
+    color: #0094ff;
+}
+
+.fa-telegram {
+    color: #30a8dc;
+}
+
+.fa-whatsapp {
+    color: #25d366;
+}

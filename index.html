@@ -4,10 +4,13 @@
         <title>Phillip Schichtel - Curriculum Vitae</title>
         <meta charset="UTF-8">
         <link rel="stylesheet" href="cv.css">
+        <link rel="stylesheet" href="cv.screen.css" media="screen">
+        <link rel="stylesheet" href="cv.print.css" media="print">
         <link rel="stylesheet" href="cv.en.css">
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     </head>
     <body>
+        <canvas></canvas>
         <header>
             <div id="toggles">
                 <div>
@@ -300,22 +303,6 @@
             </section>
         </main>
         <script src="cv.js"></script>
-        <!-- Piwik -->
-        <script type="text/javascript">
-            var _paq = _paq || [];
-            /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
-            _paq.push(["setCookieDomain", "*.schich.tel"]);
-            _paq.push(['trackPageView']);
-            _paq.push(['enableLinkTracking']);
-            (function() {
-                var u="//analytics.cubyte.org/";
-                _paq.push(['setTrackerUrl', u+'piwik.php']);
-                _paq.push(['setSiteId', '7']);
-                var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
-                g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'piwik.js'; s.parentNode.insertBefore(g,s);
-            })();
-        </script>
-        <noscript><p><img src="//analytics.cubyte.org/piwik.php?idsite=7&amp;rec=1" style="border:0;" alt="" /></p></noscript>
-        <!-- End Piwik Code -->
+        <script src="cv.background.js"></script>
     </body>
 </html>
