@@ -190,7 +190,14 @@
     };
 
     const color = {
-        hsv2rgb: function(hue, saturation, value) {
+        red:   [1, 0, 0, 1],
+        green: [0, 1, 0, 1],
+        blue:  [0, 0, 1, 1],
+
+        hsv2rgb: function(hue, saturation, value, alpha = 1) {
+            if (Array.isArray(hue)) {
+                [hue, saturation, value, alpha] = hue;
+            }
             const chroma = value * saturation;
             const hueSection = hue / 60;
             const x = chroma * (1 - Math.abs((hueSection % 2) - 1));
@@ -220,10 +227,13 @@
                 b = x;
             }
 
-            return [r + m, g + m, b + m];
+            return [r + m, g + m, b + m, alpha];
         },
 
-        rgb2hsv: function(red, green, blue) {
+        rgb2hsv: function(red, green, blue, alpha = 1) {
+            if (Array.isArray(red)) {
+                [red, green, blue, alpha] = red;
+            }
             const max = Math.max(red, Math.min(green, blue));
             const min = Math.min(red, Math.min(green, blue));
 
@@ -253,9 +263,59 @@
                 hue += 360;
             }
 
-            return [hue, saturation, value]
+            return [hue, saturation, value, alpha]
+        },
+
+        temperature2rgb: function(kelvin, alpha = 1) {
+            function clamp( x, min, max ) {
+                if(x<min){ return min; }
+                if(x>max){ return max; }
+                return x;
+            }
+
+            let temp = kelvin / 100;
+            let red, green, blue;
+
+            if( temp <= 66 ){
+
+                red = 255;
+
+                green = temp;
+                green = 99.4708025861 * Math.log(green) - 161.1195681661;
+
+
+                if( temp <= 19){
+
+                    blue = 0;
+
+                } else {
+
+                    blue = temp-10;
+                    blue = 138.5177312231 * Math.log(blue) - 305.0447927307;
+
+                }
+
+            } else {
+
+                red = temp - 60;
+                red = 329.698727446 * Math.pow(red, -0.1332047592);
+
+                green = temp - 60;
+                green = 288.1221695283 * Math.pow(green, -0.0755148492 );
+
+                blue = 255;
+
+            }
+
+            return [clamp(red,   0, 255) / 255, clamp(green,   0, 255) / 255, clamp(blue,   0, 255) / 255, alpha];
+        },
+
+        withLightness(c, lightness) {
+            let [h, s, v, a] = color.rgb2hsv(c);
+            return color.hsv2rgb(h, s, lightness, a);
         }
     };
+    window.color = color;
 
     const aabb = {
         findAABB: function(mesh, transform) {
@@ -542,84 +602,126 @@
     }
 
     class Simulation {
-        constructor(canvas, gl, view) {
+        constructor(canvas, gl, shader) {
             this.canvas = canvas;
             this.gl = gl;
-            this.view = view;
-            this.gameObjects = [];
+            this.shader = shader;
+            this.view = mat4.identity;
+
+            this.tempParticles = [];
+            this.aliveParticles = [];
+            this.deadParticles = [];
+            this.particlePoolSize = 5000;
+
+            this.particlePointBuffer = gl.createBuffer();
+            this.particleColorBuffer = gl.createBuffer();
+            this.mouseX = 0;
+            this.mouseY = 0;
+            this.mouseReachable = false;
+            this.particleSize = 10;
             this.updateCanvas();
         }
 
-        addObject(obj) {
-            this.gameObjects.push(obj);
+        setPoolSize(size) {
+            this.particlePoolSize = size;
+        }
+
+        canSpawn() {
+            return this.aliveParticles.length < this.particlePoolSize;
+        }
+
+        spawn() {
+            if (!this.canSpawn()) {
+                return null;
+            }
+            let particle;
+            if (this.deadParticles.length > 0) {
+                particle = this.deadParticles.shift();
+            } else {
+                particle = new Particle();
+            }
+            this.aliveParticles.push(particle);
+            particle.alive = true;
+            return particle;
+        }
+
+        kill(particle) {
+            particle.alive = false;
+            this.deadParticles.push(particle);
         }
 
         updateCanvas() {
             this.canvas.width = this.canvas.clientWidth;
             this.canvas.height = this.canvas.clientHeight;
-            this.projection = mat4.orthographicProjection(this.canvas.width, this.canvas.height, 10);
             this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-            this.reverseProjection = mat4.invert(mat4.multiply(this.view, this.projection));
+
+            this.updateProjection();
 
             this.topLeftCorner = mat4.multiplyV4(this.reverseProjection, [-1, 1, 0, 1]);
             this.bottomRightCorner = mat4.multiplyV4(this.reverseProjection, [1, -1, 0, 1]);
         }
 
-        update(dt) {
-            if (this.canvas.width !== this.canvas.clientWidth || this.canvas.height !== this.canvas.clientHeight) {
-                sim.updateCanvas()
-            }
-            this.simulatePhysics(dt);
-            for (let go of this.gameObjects) {
-                go.update(dt);
-            }
+        updateProjection() {
+            this.zoom = window.devicePixelRatio;
+            this.projection = mat4.orthographicProjection(this.canvas.width, this.canvas.height, 10);
+            this.reverseProjection = mat4.invert(mat4.multiply(this.view, this.projection));
         }
 
-        simulatePhysics(dt) {
-            for (let go of this.gameObjects) {
-                go.transform.move(vec.scale(dt, go.velocity));
+        update(dt) {
+            if (this.canvas.width !== this.canvas.clientWidth || this.canvas.height !== this.canvas.clientHeight) {
+                this.updateCanvas();
+            }
+            if (this.zoom !== window.devicePixelRatio) {
+                this.updateProjection();
+            }
+            this.simulateParticles(dt);
+        }
+
+        getMouseInWorld() {
+            const x = this.mouseX / (this.canvas.width / 2) - 1;
+            const y = (this.canvas.height - this.mouseY) / (this.canvas.height / 2) - 1;
+            return mat4.multiplyV4(this.reverseProjection, [x, y, 0, 1]);
+        }
+
+        simulateParticles(dt) {
+            let focusFactor = 0;
+            let [mouseX, mouseY, ] = this.getMouseInWorld();
+            let closeParticles = new Set();
+            let qt = new QuadTree(this.topLeftCorner, this.bottomRightCorner, 10);
+            for (let particle of this.aliveParticles) {
+                qt.add(particle.x, particle.y, particle);
             }
 
-            for (let go of this.gameObjects) {
-                let [[x, y, ], [width, height, ]] = go.aabb;
-
-                let leftDelta = x - this.topLeftCorner[0];
-                let rightDelta = this.bottomRightCorner[0] - (x + width);
-
-                let topDelta = this.topLeftCorner[1] - (y + height);
-                let bottomDelta = y - this.bottomRightCorner[1];
-
-                let applyForce = false;
-                let out = [0, 0, 0];
-
-                if (leftDelta < 0) {
-                    out[0] = -leftDelta;
-                    applyForce = true;
-                } else if (rightDelta < 0) {
-                    out[0] = rightDelta;
-                    applyForce = true;
-                }
-
-                if (topDelta < 0) {
-                    out[1] = topDelta;
-                    applyForce = true;
-                } else if (bottomDelta < 0) {
-                    out[1] = -bottomDelta;
-                    applyForce = true;
-                }
-
-                if (applyForce) {
-                    console.log(out);
-                    go.transform.move(out);
-                    vec.set(go.velocity, 0);
-                    // if (out[0] !== 0) {
-                    //     go.velocity[0] = Math.abs(go.velocity[0]) * -Math.sign(out[0]);
-                    // }
-                    // if (out[1] !== 0) {
-                    //     go.velocity[0] = Math.abs(go.velocity[1]) * -Math.sign(out[1]);
-                    // }
+            if (document.hasFocus() && this.mouseReachable) {
+                focusFactor = 1;
+                let radius = 200;
+                for (let p of qt.selectCircle(mouseX, mouseY, radius)) {
+                    closeParticles.add(p);
                 }
             }
+
+            this.tempParticles = [];
+            for (let particle of this.aliveParticles) {
+                if (!particle.alive) {
+                    continue;
+                }
+
+                let dx = mouseX - particle.x;
+                let dy = mouseY - particle.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (closeParticles.has(particle)) {
+                    particle.color = color.green;
+                } else {
+                    particle.color = color.red;
+                }
+
+                particle.x += (random(-1, 1) + (dx / distance) * focusFactor) * particle.speed * dt;
+                particle.y += (random(-1, 1) + (dy / distance) * focusFactor) * particle.speed * dt;
+
+                this.tempParticles.push(particle);
+            }
+            this.aliveParticles = this.tempParticles;
 
         }
 
@@ -631,87 +733,226 @@
 
             this.gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-            for (let go of this.gameObjects) {
-                go.render(this.gl, this.projection, this.view);
+            this.gl.useProgram(this.shader.program);
+
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.particlePointBuffer);
+            let vertexData = new Float32Array(this.aliveParticles.length * 2);
+            for (let i = 0; i < this.aliveParticles.length; ++i) {
+                let bufOffset = i * 2;
+                vertexData[bufOffset]     = this.aliveParticles[i].x;
+                vertexData[bufOffset + 1] = this.aliveParticles[i].y;
+            }
+            this.gl.bufferData(this.gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+            this.gl.vertexAttribPointer(this.shader.attribute["vertexPosition"], 2, this.gl.FLOAT, false, 0, 0);
+            this.gl.enableVertexAttribArray(this.shader.attribute["vertexPosition"]);
+
+            this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.particleColorBuffer);
+            let colorData = new Float32Array(this.aliveParticles.length * 4);
+            for (let i = 0; i < this.aliveParticles.length; ++i) {
+                let bufOffset = i * 4;
+                colorData[bufOffset]     = this.aliveParticles[i].color[0];
+                colorData[bufOffset + 1] = this.aliveParticles[i].color[1];
+                colorData[bufOffset + 2] = this.aliveParticles[i].color[2];
+                colorData[bufOffset + 3] = this.aliveParticles[i].color[3];
+            }
+            this.gl.bufferData(this.gl.ARRAY_BUFFER, colorData, gl.STATIC_DRAW);
+            this.gl.vertexAttribPointer(this.shader.attribute["color"], 4, this.gl.FLOAT, false, 0, 0);
+            this.gl.enableVertexAttribArray(this.shader.attribute["color"]);
+
+            this.gl.uniformMatrix4fv(this.shader.uniform["modelMatrix"], false, mat4.identity);
+            this.gl.uniformMatrix4fv(this.shader.uniform["viewMatrix"], false, this.view);
+            this.gl.uniformMatrix4fv(this.shader.uniform["projectionMatrix"], false, this.projection);
+            this.gl.uniform1f(this.shader.uniform["size"], this.particleSize);
+
+            this.gl.drawArrays(gl.POINTS, 0, this.aliveParticles.length);
+        }
+    }
+
+    function randomBoolean() {
+        return !Math.floor(Math.random() * 2);
+    }
+
+    function random(min, max) {
+        return min + Math.random() * (max - min);
+    }
+
+    class Particle {
+        constructor() {
+            this.x = 0;
+            this.y = 0;
+            this.alive = true;
+
+            this.color = color.blue;
+            this.speed = 1;
+            this.male = true;
+            this.strength = 1;
+        }
+
+        randomize() {
+            this.color = color.hsv2rgb(Math.random() * 5 * 60, 1, 1, 1);
+            this.speed = random(4, 100);
+            this.male = randomBoolean();
+            this.strength = random(4, 10);
+        }
+
+        static crossover(mom, dad, child) {
+            for (let prop in this) {
+                if (this.hasOwnProperty(prop)) {
+                    child[prop] = randomBoolean() ? mom[prop] : dad[prop];
+                }
             }
         }
     }
 
-    class GameObject {
-        constructor(mesh, shader) {
-            this.transform = new Transform();
-            this.mesh = mesh;
-            this.shader = shader;
+    class QuadTree {
+        constructor(topLeft, bottomRight, limit = 10, depth = 0) {
+            if (this.depth > 20) {
+                throw "tree too deep"
+            }
+            this.topLeft = topLeft;
+            this.bottomRight = bottomRight;
+            this.objects = [];
+            this.limit = limit;
+            this.depth = depth;
+            this.hasChildren = false;
 
+            this.topLeftQuad = null;
+            this.topRightQuad = null;
+            this.bottomLeftQuad = null;
+            this.bottomRightQuad = null;
         }
 
-        update(dt) {}
-        render(gl, proj, view) {}
-
-    }
-
-    class Particle extends GameObject {
-        constructor(mesh, shader, aabb) {
-            super(mesh, shader);
-            this.color = [1, 1, 1, 1];
-            this.aabbObj = aabb;
-            this.aabb = [];
-
-            this.velocity = vec.scale(/*Math.random() * */200 + 20, vec.normalize(Math.random() * 2 - 1, Math.random() * 2 - 1, 0));;
-            this.updateAabb();
+        contains(x, y) {
+            return QuadTree.rectContains(x, y, this.topLeft, this.bottomRight);
         }
 
-        updateAabb() {
-            this.aabb = aabb.findAABB(this.mesh, this.transform);
-            let [pos, scale] = this.aabb;
-            this.aabbObj.transform.setPosition(pos);
-            this.aabbObj.transform.setScale(scale);
+        static rectContains(x, y, tl, br) {
+            return x >= tl[0] && x < br[0] && y <= tl[1] && y > br[1];
         }
 
-        update(dt) {
-            let [r, g, b] = color.hsv2rgb(90, 1, 1);
-            this.color = [r, g, b, 1];
-
-            this.updateAabb();
+        rectOverlaps(l, r) {
+            return QuadTree.rectsOverlap(this.topLeft, this.bottomRight, l, r)
         }
 
-        render(gl, proj, view) {
-            this.mesh.bind(gl);
-            gl.vertexAttribPointer(this.shader.attribute["vertexPosition"], this.mesh.vertexSize, this.mesh.dataType, false, 0, 0);
-            gl.enableVertexAttribArray(this.shader.attribute["vertexPosition"]);
+        static rectsOverlap(l1, r1, l2, r2) {
+            if (l1[0] > r2[0] || l2[0] > r1[0]) {
+                return false;
+            }
 
-            gl.useProgram(this.shader.program);
-            gl.uniformMatrix4fv(this.shader.uniform["modelMatrix"], false, this.transform.getTransformation());
-            gl.uniformMatrix4fv(this.shader.uniform["viewMatrix"], false, view);
-            gl.uniformMatrix4fv(this.shader.uniform["projectionMatrix"], false, proj);
-            gl.uniform4fv(this.shader.uniform["color"], this.color);
+            if (l1[1] < r2[1] || l2[1] < r1[1]) {
+                return false;
+            }
 
-            gl.drawArrays(gl.TRIANGLES, 0, this.mesh.vertexCount);
-
-            this.aabbObj.render(gl, proj, view);
-        }
-    }
-
-    class AABB extends GameObject {
-
-        constructor(mesh, shader) {
-            super(mesh, shader)
+            return true;
         }
 
-        update(dt) {}
+        forEachQuad(f) {
+            if (!f(this.topLeftQuad)) {
+                return;
+            }
+            if (!f(this.topRightQuad)) {
+                return;
+            }
+            if (!f(this.bottomLeftQuad)) {
+                return;
+            }
+            f(this.bottomRightQuad);
+        }
 
-        render(gl, proj, view) {
-            this.mesh.bind(gl);
-            gl.vertexAttribPointer(this.shader.attribute["vertexPosition"], this.mesh.vertexSize, this.mesh.dataType, false, 0, 0);
-            gl.enableVertexAttribArray(this.shader.attribute["vertexPosition"]);
+        add(x, y, obj) {
+            this.addNode({
+                x: x,
+                y: y,
+                object: obj
+            });
+        }
 
-            gl.useProgram(this.shader.program);
-            gl.uniformMatrix4fv(this.shader.uniform["modelMatrix"], false, this.transform.getTransformation());
-            gl.uniformMatrix4fv(this.shader.uniform["viewMatrix"], false, mat4.identity);
-            gl.uniformMatrix4fv(this.shader.uniform["projectionMatrix"], false, proj);
-            gl.uniform4fv(this.shader.uniform["color"], [1, 0, 0, 1]);
+        addNode(node) {
+            if (this.hasChildren) {
+                this.forEachQuad(quad => {
+                    if (quad.contains(node.x, node.y)) {
+                        quad.addNode(node);
+                        return false;
+                    }
+                    return true;
+                });
+            } else {
+                if (this.objects.length >= this.limit) {
+                    let oldObjects = this.objects;
+                    this.objects = [];
+                    const [tl, tr, bl, br] = QuadTree.calculateInnerPoints(this.topLeft, this.bottomRight);
+                    this.topLeftQuad     = new QuadTree(tl[0], tl[1], this.limit, this.depth + 1);
+                    this.topRightQuad    = new QuadTree(tr[0], tr[1], this.limit, this.depth + 1);
+                    this.bottomLeftQuad  = new QuadTree(bl[0], bl[1], this.limit, this.depth + 1);
+                    this.bottomRightQuad = new QuadTree(br[0], br[1], this.limit, this.depth + 1);
+                    this.hasChildren = true;
 
-            gl.drawArrays(gl.LINE_LOOP, 0, this.mesh.vertexCount);
+                    for (let oldObject of oldObjects) {
+                        this.addNode(oldObject)
+                    }
+                    this.addNode(node);
+                } else {
+                    this.objects.push(node);
+                }
+            }
+        }
+
+        static calculateInnerPoints(tl, br) {
+            let midX = (tl[0] + (br[0] - tl[0]) / 2);
+            let midY = (tl[1] - (tl[1] - br[1]) / 2);
+
+            let topCenter = [midX, tl[1]];
+            let leftCenter = [tl[0], midY];
+            let middleCenter = [midX, midY];
+            let rightCenter = [br[0], midY];
+            let bottomCenter = [midX, br[1]];
+
+            return [
+                [tl, middleCenter],
+                [topCenter, rightCenter],
+                [leftCenter, bottomCenter],
+                [middleCenter, br]
+            ]
+        }
+
+        selectRect(tl, br) {
+            let out = [];
+            this.selectRectInto(tl, br, out);
+            return out.map(n => n.object);
+        }
+
+        selectRectInto(tl, br, out) {
+            if (this.hasChildren) {
+                this.forEachQuad(q => {
+                    if (q.rectOverlaps(tl, br)) {
+                        q.selectRectInto(tl, br, out);
+                    }
+                    return true;
+                });
+            } else {
+                for (let node of this.objects) {
+                    if (QuadTree.rectContains(node.x, node.y, tl, br)) {
+                        out.push(node);
+                    }
+                }
+            }
+        }
+
+        selectCircle(centerX, centerY, radius) {
+            let rl = [centerX - radius, centerY + radius];
+            let br = [centerX + radius, centerY - radius];
+            let candidates = [];
+            this.selectRectInto(rl, br, candidates);
+            let out = [];
+            let radiusSqr = radius * radius;
+            for (let candidate of candidates) {
+                let dx = candidate.x - centerX;
+                let dy = candidate.y - centerY;
+                if ((dx * dx + dy * dy) <= radiusSqr) {
+                    out.push(candidate.object)
+                }
+            }
+            return out;
         }
     }
 
@@ -732,34 +973,56 @@
 
     const vertexShader = `
         attribute vec4 vertexPosition;
+        attribute vec4 color;
         
         uniform mat4 modelMatrix;
         uniform mat4 viewMatrix;
         uniform mat4 projectionMatrix;
+        uniform float size;
+        
+        varying vec4 pointColor;
         
         void main() {
-            gl_Position = projectionMatrix * viewMatrix * modelMatrix * vertexPosition;
+            vec4 rounded = vec4(floor(vertexPosition.x + 0.5), floor(vertexPosition.y + 0.5), vertexPosition.z, vertexPosition.w);
+            gl_Position = projectionMatrix * viewMatrix * modelMatrix * rounded;
+            gl_PointSize = size;
+            pointColor = color.rgba;
         }
     `;
 
     const fragmentShader = `
-        uniform mediump vec4 color;
+        varying mediump vec4 pointColor;
         
         void main() {
-            gl_FragColor = color;
+            gl_FragColor = pointColor;
         }
     `;
 
-    let defaultShader = buildShader(gl, vertexShader, fragmentShader, ["vertexPosition"], ["projectionMatrix", "viewMatrix", "modelMatrix", "color"]);
+    function gaussianRand() {
+        return (Math.random() + Math.random()) / 2;
+    }
 
-    let sim = new Simulation(canvas, gl, mat4.identity);
+    let defaultShader = buildShader(gl, vertexShader, fragmentShader, ["vertexPosition", "color"], ["projectionMatrix", "viewMatrix", "modelMatrix", "size"]);
 
-    let unitSquare = Mesh.createRect(gl, 1);
-    let squareMesh = Mesh.createCenteredRect(gl, 1);
-    let particle = new Particle(squareMesh, defaultShader, new AABB(unitSquare, defaultShader));
-    particle.transform.setScale(100);
+    let sim = new Simulation(canvas, gl, defaultShader);
+    window.addEventListener('mousemove', e => {
+        sim.mouseX = e.clientX - canvas.clientLeft;
+        sim.mouseY = e.clientY - canvas.clientTop;
+        sim.mouseReachable = true;
+    });
+    window.addEventListener('mouseout', () => {
+        sim.mouseReachable = false;
+    });
 
-    //sim.addObject(particle);
+    const halfWidth = (canvas.width / 2) * 0.9;
+    const halfHeight = (canvas.height / 2) * 0.9;
+
+    for (let i = 0; i < 5000; ++i) {
+        let particle = sim.spawn();
+        particle.x = (gaussianRand() * 2 - 1) * halfWidth;
+        particle.y = (gaussianRand() * 2 - 1) * halfHeight;
+        particle.randomize();
+    }
 
     renderLoop(0, dt => {
         sim.update(dt);
