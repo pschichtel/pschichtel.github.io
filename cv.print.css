@@ -35,4 +35,13 @@ abbr {
 
 abbr[title]:after {
     content: ' (' attr(title) ')';
+    hyphens: unset;
+}
+
+canvas {
+    display: none;
+}
+
+a[href^="http"].printable:after {
+    content: ' (' attr(href) ')';
 }
