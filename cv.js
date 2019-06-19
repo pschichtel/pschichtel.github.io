@@ -13,10 +13,17 @@
     }
 
     function lightSwitch(e) {
-        document.body.className = e.target.checked ? 'dark' : '';
+        var darkClass = "dark";
+        if (e.target.checked) {
+            document.body.classList.add(darkClass);
+        } else {
+            document.body.classList.remove(darkClass);
+        }
     }
 
     let lightSwitchElem = document.getElementById('darkmode');
-    lightSwitchElem.addEventListener('click', lightSwitch);
-    lightSwitch({target: lightSwitchElem});
+    if (lightSwitchElem) {
+        lightSwitchElem.addEventListener('click', lightSwitch);
+        lightSwitch({target: lightSwitchElem});
+    }
 })();

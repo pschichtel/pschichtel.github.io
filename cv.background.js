@@ -193,6 +193,7 @@
         red:   [1, 0, 0, 1],
         green: [0, 1, 0, 1],
         blue:  [0, 0, 1, 1],
+        magenta:  [1, 0, 1, 1],
 
         hsv2rgb: function(hue, saturation, value, alpha = 1) {
             if (Array.isArray(hue)) {
@@ -315,7 +316,6 @@
             return color.hsv2rgb(h, s, lightness, a);
         }
     };
-    window.color = color;
 
     const aabb = {
         findAABB: function(mesh, transform) {
@@ -641,7 +641,7 @@
                 particle = new Particle();
             }
             this.aliveParticles.push(particle);
-            particle.alive = true;
+            particle.spawn();
             return particle;
         }
 
@@ -678,25 +678,40 @@
         }
 
         getMouseInWorld() {
-            const x = this.mouseX / (this.canvas.width / 2) - 1;
-            const y = (this.canvas.height - this.mouseY) / (this.canvas.height / 2) - 1;
+            return this.browserPositionToWorld(this.mouseX, this.mouseY);
+        }
+
+        clickedAt(e) {
+            let [x, y,] = this.browserPositionToWorld(e.clientX, e.clientY);
+            console.log("clicked at", x, ",", y);
+            let male = e.button === 0;
+            if (this.canSpawn()) {
+                let particle = this.spawn();
+                particle.x = x;
+                particle.y = y;
+                particle.randomize();
+                particle.male = male;
+            }
+        }
+
+        browserPositionToWorld(browserX, browserY) {
+            const x = browserX / (this.canvas.width / 2) - 1;
+            const y = (this.canvas.height - browserY) / (this.canvas.height / 2) - 1;
             return mat4.multiplyV4(this.reverseProjection, [x, y, 0, 1]);
         }
 
         simulateParticles(dt) {
-            let focusFactor = 0;
             let [mouseX, mouseY, ] = this.getMouseInWorld();
-            let closeParticles = new Set();
+            let particlesCloseToMouse = new Set();
             let qt = new QuadTree(this.topLeftCorner, this.bottomRightCorner, 10);
             for (let particle of this.aliveParticles) {
                 qt.add(particle.x, particle.y, particle);
             }
 
             if (document.hasFocus() && this.mouseReachable) {
-                focusFactor = 1;
                 let radius = 200;
                 for (let p of qt.selectCircle(mouseX, mouseY, radius)) {
-                    closeParticles.add(p);
+                    particlesCloseToMouse.add(p);
                 }
             }
 
@@ -706,23 +721,77 @@
                     continue;
                 }
 
-                let dx = mouseX - particle.x;
-                let dy = mouseY - particle.y;
-                let distance = Math.sqrt(dx * dx + dy * dy);
+                let visibleNeighborsWithDistance = [];
+                qt.forEachInCircle(particle.x, particle.y, particle.sightRange, (p, distanceSqr) => {
+                    if (p.alive) {
+                        visibleNeighborsWithDistance.push([p, distanceSqr]);
+                    }
+                });
 
-                if (closeParticles.has(particle)) {
-                    particle.color = color.green;
-                } else {
-                    particle.color = color.red;
+                visibleNeighborsWithDistance.sort((a, b) => a[1] - b[1]);
+
+                for (let [otherParticle, distSqr] of visibleNeighborsWithDistance) {
+                    if (distSqr <= particle.attackRange * particle.attackRange && otherParticle.strength < particle.strength) {
+                        this.kill(otherParticle);
+                    }
                 }
 
-                particle.x += (random(-1, 1) + (dx / distance) * focusFactor) * particle.speed * dt;
-                particle.y += (random(-1, 1) + (dy / distance) * focusFactor) * particle.speed * dt;
+                for (let [otherParticle, ] of visibleNeighborsWithDistance) {
+                    if (otherParticle.alive && otherParticle.male !== particle.male && this.canSpawn()) {
+                        let child = this.spawn();
+                        Particle.crossover(particle, otherParticle, child);
+                        child.x = particle.x + (otherParticle.x - particle.x);
+                        child.y = particle.y + (otherParticle.y - particle.y);
+                        break;
+                    }
+                }
 
-                this.tempParticles.push(particle);
+                particle.decisionTimeout -= dt;
+                if (particle.decisionTimeout <= 0) {
+                    let angle = random(0, 2 * Math.PI);
+                    let vx = Math.cos(angle);
+                    let vy = Math.sin(angle);
+                    particle.vx = vx * particle.speed;
+                    particle.vy = vy * particle.speed;
+
+                    particle.decisionTimeout = particle.decisionDuration * 1000;
+                }
+
+                this.moveParticle(particle, dt);
+
+                if (particle.male) {
+                    particle.color = color.blue;
+                } else {
+                    particle.color = color.magenta;
+                }
+
+
+                if (particle.alive) {
+                    this.tempParticles.push(particle);
+                }
             }
             this.aliveParticles = this.tempParticles;
 
+        }
+
+        moveParticle(particle, dt) {
+            let newX = particle.x + particle.vx * dt;
+            let newY = particle.y + particle.vy * dt;
+
+            if (newX < this.topLeftCorner[0]) {
+                newX = this.bottomRightCorner[0] - (this.topLeftCorner[0] - newX);
+            } else if (newX >= this.bottomRightCorner[0]) {
+                newX = this.topLeftCorner[0] + (newX - this.bottomRightCorner[0]);
+            }
+
+            if (newY > this.topLeftCorner[1]) {
+                newY = this.bottomRightCorner[1] + (newY - this.topLeftCorner[1]);
+            } else if (newY <= this.bottomRightCorner[1]) {
+                newY = this.topLeftCorner[1] - (this.bottomRightCorner[1] - newY);
+            }
+
+            particle.x = newX;
+            particle.y = newY;
         }
 
         render() {
@@ -778,24 +847,46 @@
 
     class Particle {
         constructor() {
-            this.x = 0;
-            this.y = 0;
-            this.alive = true;
+            this.spawn();
 
             this.color = color.blue;
             this.speed = 1;
             this.male = true;
             this.strength = 1;
+            this.sightRange = 30;
+            this.attackRange = 20;
+            this.decisionDuration = 0;
+        }
+
+        spawn() {
+            this.x = 0;
+            this.y = 0;
+            this.vx = 0;
+            this.vy = 0;
+            this.alive = true;
+            this.decisionTimeout = 0;
         }
 
         randomize() {
             this.color = color.hsv2rgb(Math.random() * 5 * 60, 1, 1, 1);
-            this.speed = random(4, 100);
+            this.speed = random(15, 400);
             this.male = randomBoolean();
             this.strength = random(4, 10);
+            this.sightRange = random(20, 50);
+            this.attackRange = random(10, 20);
+            this.decisionDuration = random(1, 3);
         }
 
-        static crossover(mom, dad, child) {
+        static crossover(parentA, parentB, child) {
+            let mom;
+            let dad;
+            if (parentB.male) {
+                mom = parentA;
+                dad = parentB;
+            } else {
+                mom = parentB;
+                dad = parentA;
+            }
             for (let prop in this) {
                 if (this.hasOwnProperty(prop)) {
                     child[prop] = randomBoolean() ? mom[prop] : dad[prop];
@@ -917,41 +1008,59 @@
 
         selectRect(tl, br) {
             let out = [];
-            this.selectRectInto(tl, br, out);
-            return out.map(n => n.object);
+            this.forEachInRect(tl, br, node => {
+                out.push(node.object);
+            });
+            return out;
         }
 
-        selectRectInto(tl, br, out) {
+        forEachInRect(tl, br, f) {
             if (this.hasChildren) {
                 this.forEachQuad(q => {
                     if (q.rectOverlaps(tl, br)) {
-                        q.selectRectInto(tl, br, out);
+                        q.forEachInRect(tl, br, f);
                     }
                     return true;
                 });
             } else {
                 for (let node of this.objects) {
                     if (QuadTree.rectContains(node.x, node.y, tl, br)) {
-                        out.push(node);
+                        f(node);
                     }
                 }
             }
         }
 
         selectCircle(centerX, centerY, radius) {
-            let rl = [centerX - radius, centerY + radius];
-            let br = [centerX + radius, centerY - radius];
-            let candidates = [];
-            this.selectRectInto(rl, br, candidates);
-            let out = [];
-            let radiusSqr = radius * radius;
-            for (let candidate of candidates) {
+            const rl = [centerX - radius, centerY + radius];
+            const br = [centerX + radius, centerY - radius];
+
+            const radiusSqr = radius * radius;
+            const out = [];
+            this.forEachInCircle(rl, br, candidate => {
                 let dx = candidate.x - centerX;
                 let dy = candidate.y - centerY;
                 if ((dx * dx + dy * dy) <= radiusSqr) {
                     out.push(candidate.object)
                 }
-            }
+            });
+            return out;
+        }
+
+        forEachInCircle(centerX, centerY, radius, f) {
+            const rl = [centerX - radius, centerY + radius];
+            const br = [centerX + radius, centerY - radius];
+
+            const radiusSqr = radius * radius;
+            const out = [];
+            this.forEachInRect(rl, br, candidate => {
+                let dx = candidate.x - centerX;
+                let dy = candidate.y - centerY;
+                let distanceSqr = dx * dx + dy * dy;
+                if (distanceSqr <= radiusSqr) {
+                    f(candidate.object, distanceSqr);
+                }
+            });
             return out;
         }
     }
@@ -1013,19 +1122,38 @@
     window.addEventListener('mouseout', () => {
         sim.mouseReachable = false;
     });
+    window.addEventListener('click', e => {
+        sim.clickedAt(e);
+    });
 
-    const halfWidth = (canvas.width / 2) * 0.9;
-    const halfHeight = (canvas.height / 2) * 0.9;
+    const halfWidth = (canvas.width / 2);
+    const halfHeight = (canvas.height / 2);
 
-    for (let i = 0; i < 5000; ++i) {
-        let particle = sim.spawn();
+    function randomizeAndPlace(particle) {
         particle.x = (gaussianRand() * 2 - 1) * halfWidth;
         particle.y = (gaussianRand() * 2 - 1) * halfHeight;
         particle.randomize();
     }
 
-    renderLoop(0, dt => {
-        sim.update(dt);
-        sim.render();
+    function spawnABunch(counter, sim, bunchSize, delay, onFinish) {
+        for (let i = 0; i < bunchSize && sim.aliveParticles.length < sim.particlePoolSize; ++i) {
+            randomizeAndPlace(sim.spawn());
+        }
+        if (sim.aliveParticles.length < sim.particlePoolSize) {
+            setTimeout(() => spawnABunch(counter, sim, bunchSize, delay, onFinish), delay);
+        } else {
+            onFinish();
+        }
+    }
+
+    spawnABunch(0, sim, 200, 50, () => {
+        renderLoop(0, dt => {
+            sim.update(dt);
+            sim.render();
+        });
+        setTimeout(() => canvas.classList.add("loaded"), 1000);
     });
+
+
+
 })();
