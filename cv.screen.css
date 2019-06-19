@@ -7,6 +7,11 @@ body {
 body.dark {
     color: white;
     background-color: black;
+    text-shadow:
+            -1px -1px 0 #000,
+            1px -1px 0 #000,
+            -1px 1px 0 #000,
+            1px 1px 0 #000;
 }
 
 body.dark a {
