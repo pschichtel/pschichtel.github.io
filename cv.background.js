@@ -701,18 +701,9 @@
         }
 
         simulateParticles(dt) {
-            let [mouseX, mouseY, ] = this.getMouseInWorld();
-            let particlesCloseToMouse = new Set();
-            let qt = new QuadTree(this.topLeftCorner, this.bottomRightCorner, 10);
+            let qt = new ParticleQuadTree(this.topLeftCorner, this.bottomRightCorner, 10);
             for (let particle of this.aliveParticles) {
-                qt.add(particle.x, particle.y, particle);
-            }
-
-            if (document.hasFocus() && this.mouseReachable) {
-                let radius = 200;
-                for (let p of qt.selectCircle(mouseX, mouseY, radius)) {
-                    particlesCloseToMouse.add(p);
-                }
+                qt.add(particle);
             }
 
             this.tempParticles = [];
@@ -895,8 +886,8 @@
         }
     }
 
-    class QuadTree {
-        constructor(topLeft, bottomRight, limit = 10, depth = 0) {
+    class ParticleQuadTree {
+        constructor(topLeft, bottomRight, limit = 40, depth = 0) {
             if (this.depth > 20) {
                 throw "tree too deep"
             }
@@ -914,7 +905,7 @@
         }
 
         contains(x, y) {
-            return QuadTree.rectContains(x, y, this.topLeft, this.bottomRight);
+            return ParticleQuadTree.rectContains(x, y, this.topLeft, this.bottomRight);
         }
 
         static rectContains(x, y, tl, br) {
@@ -922,7 +913,7 @@
         }
 
         rectOverlaps(l, r) {
-            return QuadTree.rectsOverlap(this.topLeft, this.bottomRight, l, r)
+            return ParticleQuadTree.rectsOverlap(this.topLeft, this.bottomRight, l, r)
         }
 
         static rectsOverlap(l1, r1, l2, r2) {
@@ -950,19 +941,15 @@
             f(this.bottomRightQuad);
         }
 
-        add(x, y, obj) {
-            this.addNode({
-                x: x,
-                y: y,
-                object: obj
-            });
+        add(particle) {
+            this.addNode(particle);
         }
 
-        addNode(node) {
+        addNode(particle) {
             if (this.hasChildren) {
                 this.forEachQuad(quad => {
-                    if (quad.contains(node.x, node.y)) {
-                        quad.addNode(node);
+                    if (quad.contains(particle.x, particle.y)) {
+                        quad.addNode(particle);
                         return false;
                     }
                     return true;
@@ -971,19 +958,19 @@
                 if (this.objects.length >= this.limit) {
                     let oldObjects = this.objects;
                     this.objects = [];
-                    const [tl, tr, bl, br] = QuadTree.calculateInnerPoints(this.topLeft, this.bottomRight);
-                    this.topLeftQuad     = new QuadTree(tl[0], tl[1], this.limit, this.depth + 1);
-                    this.topRightQuad    = new QuadTree(tr[0], tr[1], this.limit, this.depth + 1);
-                    this.bottomLeftQuad  = new QuadTree(bl[0], bl[1], this.limit, this.depth + 1);
-                    this.bottomRightQuad = new QuadTree(br[0], br[1], this.limit, this.depth + 1);
+                    const [tl, tr, bl, br] = ParticleQuadTree.calculateInnerPoints(this.topLeft, this.bottomRight);
+                    this.topLeftQuad     = new ParticleQuadTree(tl[0], tl[1], this.limit, this.depth + 1);
+                    this.topRightQuad    = new ParticleQuadTree(tr[0], tr[1], this.limit, this.depth + 1);
+                    this.bottomLeftQuad  = new ParticleQuadTree(bl[0], bl[1], this.limit, this.depth + 1);
+                    this.bottomRightQuad = new ParticleQuadTree(br[0], br[1], this.limit, this.depth + 1);
                     this.hasChildren = true;
 
                     for (let oldObject of oldObjects) {
                         this.addNode(oldObject)
                     }
-                    this.addNode(node);
+                    this.addNode(particle);
                 } else {
-                    this.objects.push(node);
+                    this.objects.push(particle);
                 }
             }
         }
@@ -1008,8 +995,8 @@
 
         selectRect(tl, br) {
             let out = [];
-            this.forEachInRect(tl, br, node => {
-                out.push(node.object);
+            this.forEachInRect(tl, br, p => {
+                out.push(p);
             });
             return out;
         }
@@ -1023,9 +1010,9 @@
                     return true;
                 });
             } else {
-                for (let node of this.objects) {
-                    if (QuadTree.rectContains(node.x, node.y, tl, br)) {
-                        f(node);
+                for (let p of this.objects) {
+                    if (ParticleQuadTree.rectContains(p.x, p.y, tl, br)) {
+                        f(p);
                     }
                 }
             }
@@ -1037,11 +1024,11 @@
 
             const radiusSqr = radius * radius;
             const out = [];
-            this.forEachInCircle(rl, br, candidate => {
-                let dx = candidate.x - centerX;
-                let dy = candidate.y - centerY;
+            this.forEachInCircle(rl, br, particle => {
+                let dx = particle.x - centerX;
+                let dy = particle.y - centerY;
                 if ((dx * dx + dy * dy) <= radiusSqr) {
-                    out.push(candidate.object)
+                    out.push(particle)
                 }
             });
             return out;
@@ -1058,7 +1045,7 @@
                 let dy = candidate.y - centerY;
                 let distanceSqr = dx * dx + dy * dy;
                 if (distanceSqr <= radiusSqr) {
-                    f(candidate.object, distanceSqr);
+                    f(candidate, distanceSqr);
                 }
             });
             return out;
