@@ -11,19 +11,4 @@
             window.location.href = 'mailto:' + emailAddress;
         });
     }
-
-    function lightSwitch(e) {
-        var darkClass = "dark";
-        if (e.target.checked) {
-            document.body.classList.add(darkClass);
-        } else {
-            document.body.classList.remove(darkClass);
-        }
-    }
-
-    let lightSwitchElem = document.getElementById('darkmode');
-    if (lightSwitchElem) {
-        lightSwitchElem.addEventListener('click', lightSwitch);
-        lightSwitch({target: lightSwitchElem});
-    }
 })();
