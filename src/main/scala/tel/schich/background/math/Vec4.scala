@@ -38,4 +38,6 @@ object Vec4 {
   @inline
   def dot(ax: Double, ay: Double, az: Double, aw: Double)(bx: Double, by: Double, bz: Double, bw: Double): Double =
     ax * bx + ay * by + az * bz + aw * bw
+
+  def random: Vec4 = Vec4(Math.random(), Math.random(), Math.random(), Math.random())
 }

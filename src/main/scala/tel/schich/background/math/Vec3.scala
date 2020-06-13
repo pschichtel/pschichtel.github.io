@@ -44,4 +44,6 @@ object Vec3 {
   @inline
   def dot(ax: Double, ay: Double, az: Double)(bx: Double, by: Double, bz: Double): Double =
     ax * bx + ay * by + az * bz
+
+  def random: Vec3 = Vec3(Math.random(), Math.random(), Math.random())
 }
