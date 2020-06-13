@@ -4,22 +4,29 @@ import tel.schich.background.math.QuadTree.{Bounds, Forest}
 
 import scala.annotation.tailrec
 
-sealed trait QuadTree {
+sealed trait Positioned2D[T] {
+  def position(obj: T): Vec2
+}
+
+sealed trait QuadTree[T] {
+  def positioned: Positioned2D[T]
+
   def contains(point: Vec2): Boolean
+  def contains(obj: T): Boolean = contains(positioned.position(obj))
 
-  def selectRect(bounds: Bounds): LazyList[Vec2]
+  def selectRect(bounds: Bounds): LazyList[T]
 
-  def selectCircle(center: Vec2, radius: Double): LazyList[Vec2] = {
+  def selectCircle(center: Vec2, radius: Double): LazyList[T] = {
     val tl = Vec2(center.x - radius, center.y + radius)
     val br = Vec2(center.x + radius, center.y - radius)
     val radiusSqr = radius * radius
-    selectRect((tl, br)).filter(v => v.distanceSquared(center) <= radiusSqr)
+    selectRect((tl, br)).filter(obj => positioned.position(obj).distanceSquared(center) <= radiusSqr)
   }
 }
 
 object QuadTree {
   type Bounds = (Vec2, Vec2)
-  type Forest = (QuadTree, QuadTree, QuadTree, QuadTree)
+  type Forest[T] = (QuadTree[T], QuadTree[T], QuadTree[T], QuadTree[T])
 
   def rectContains(p: Vec2, bounds: Bounds): Boolean =
     p.x >= bounds._1.x && p.x < bounds._2.x && p.y <= bounds._1.y && p.y > bounds._2.y
@@ -29,8 +36,8 @@ object QuadTree {
     else if (a._1.y < b._2.y || b._1.y < a._2.y) false
     else true
 
-  def apply(bounds: Bounds, points: Seq[Vec2], limit: Int = 20): QuadTree = {
-    def cluster(bounds: Bounds, points: Seq[Vec2]): Forest = {
+  def apply[T](bounds: Bounds, points: Seq[Vec2], limit: Int = 20)(implicit positioned: Positioned2D[T]): QuadTree[T] = {
+    def cluster(bounds: Bounds, points: Seq[Vec2]): Forest[T] = {
 
       val (tl, br) = bounds
 
@@ -56,10 +63,9 @@ object QuadTree {
     }
 
     @inline
-    def makeTree(bounds: Bounds, points: Seq[Vec2], limit: Int): QuadTree = {
-      if (points.isEmpty) QuadTreeEmpty
-      else if (points.length <= limit) QuadTreeLeaf(bounds, points)
-      else QuadTreeForest(bounds, cluster(bounds, points))
+    def makeTree(bounds: Bounds, points: Seq[Vec2], limit: Int): QuadTree[T] = {
+      if (points.length <= limit) QuadTreeLeaf(bounds, points, positioned)
+      else QuadTreeForest(bounds, cluster(bounds, points), positioned)
     }
 
     @tailrec
@@ -76,18 +82,12 @@ object QuadTree {
       }
     }
 
-    QuadTreeForest(bounds, cluster(bounds, points))
+    QuadTreeForest(bounds, cluster(bounds, points), positioned)
   }
 }
 
-case object QuadTreeEmpty extends QuadTree {
-  override def contains(point: Vec2): Boolean = false
-
-  override def selectRect(bounds: (Vec2, Vec2)): LazyList[Vec2] = LazyList.empty
-}
-
-final case class QuadTreeForest(bounds: Bounds, forest: Forest) extends QuadTree {
-  val quadrants: Seq[QuadTree] = Seq(forest._1, forest._2, forest._3, forest._4)
+final case class QuadTreeForest[T](bounds: Bounds, forest: Forest[T], override val positioned: Positioned2D[T]) extends QuadTree[T] {
+  val quadrants: Seq[QuadTree[T]] = Seq(forest._1, forest._2, forest._3, forest._4)
 
 
   override def contains(point: Vec2): Boolean = {
@@ -98,13 +98,14 @@ final case class QuadTreeForest(bounds: Bounds, forest: Forest) extends QuadTree
     else false
   }
 
-  override def selectRect(bounds: (Vec2, Vec2)): LazyList[Vec2] =
-    quadrants.map(_.selectRect(bounds)).foldLeft(LazyList.empty[Vec2])(_ ++ _)
+  override def selectRect(bounds: (Vec2, Vec2)): LazyList[T] =
+    quadrants.map(_.selectRect(bounds)).foldLeft(LazyList.empty[T])(_ ++ _)
 }
 
-final case class QuadTreeLeaf(bounds: Bounds, points: Seq[Vec2]) extends QuadTree {
-  override def selectRect(bounds: (Vec2, Vec2)): LazyList[Vec2] =
-    if (QuadTree.rectsOverlap(this.bounds, bounds)) points.to(LazyList).filter(p => QuadTree.rectContains(p, bounds))
+final case class QuadTreeLeaf[T](bounds: Bounds, points: Seq[T], override val positioned: Positioned2D[T]) extends QuadTree[T] {
+
+  override def selectRect(bounds: (Vec2, Vec2)): LazyList[T] =
+    if (QuadTree.rectsOverlap(this.bounds, bounds)) points.to(LazyList).filter(p => QuadTree.rectContains(positioned.position(p), bounds))
     else LazyList.empty
 
   override def contains(point: Vec2): Boolean =
