@@ -39,4 +39,10 @@ object Vec2 {
   @inline
   def dot(ax: Double, ay: Double)(bx: Double, by: Double): Double =
     ax * bx + ay * by
+
+  def random: Vec2 = Vec2(Math.random(), Math.random())
+
+  implicit object Positioned extends Positioned2D[Vec2] {
+    override def position(obj: Vec2): Vec2 = obj
+  }
 }

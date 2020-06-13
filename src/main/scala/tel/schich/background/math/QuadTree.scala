@@ -4,7 +4,7 @@ import tel.schich.background.math.QuadTree.{Bounds, Forest}
 
 import scala.annotation.tailrec
 
-sealed trait Positioned2D[T] {
+trait Positioned2D[T] {
   def position(obj: T): Vec2
 }
 
@@ -36,8 +36,8 @@ object QuadTree {
     else if (a._1.y < b._2.y || b._1.y < a._2.y) false
     else true
 
-  def apply[T](bounds: Bounds, points: Seq[Vec2], limit: Int = 20)(implicit positioned: Positioned2D[T]): QuadTree[T] = {
-    def cluster(bounds: Bounds, points: Seq[Vec2]): Forest[T] = {
+  def apply[T](bounds: Bounds, objects: Seq[T], limit: Int = 20)(implicit positioned: Positioned2D[T]): QuadTree[T] = {
+    def cluster(bounds: Bounds, objects: Seq[T]): Forest[T] = {
 
       val (tl, br) = bounds
 
@@ -56,39 +56,42 @@ object QuadTree {
       val bottomRightBounds = (middleCenter, br)
 
       val (topLeftPoints, topRightPoints, bottomLeftPoints, bottomRightPoints) =
-        splitPoints(points, topLeftBounds, Vector.empty, topRightBounds, Vector.empty, bottomLeftBounds, Vector.empty, bottomRightBounds, Vector.empty)
+        splitPoints(objects, topLeftBounds, Vector.empty, topRightBounds, Vector.empty, bottomLeftBounds, Vector.empty, bottomRightBounds, Vector.empty)
 
       (makeTree(topLeftBounds, topLeftPoints, limit), makeTree(topRightBounds, topRightPoints, limit),
         makeTree(bottomLeftBounds, bottomLeftPoints, limit), makeTree(bottomRightBounds, bottomRightPoints, limit))
     }
 
     @inline
-    def makeTree(bounds: Bounds, points: Seq[Vec2], limit: Int): QuadTree[T] = {
-      if (points.length <= limit) QuadTreeLeaf(bounds, points, positioned)
-      else QuadTreeForest(bounds, cluster(bounds, points), positioned)
+    def makeTree(bounds: Bounds, points: Seq[T], limit: Int): QuadTree[T] = {
+      if (points.length <= limit) QuadTreeLeaf(bounds, points)
+      else QuadTreeForest(bounds, cluster(bounds, points))
     }
 
     @tailrec
-    def splitPoints(points: Seq[Vec2], tlBounds: Bounds, tlPoints: Vector[Vec2], trBounds: Bounds, trPoints: Vector[Vec2], blBounds: Bounds, blPoints: Vector[Vec2], brBounds: Bounds, brPoints: Vector[Vec2]): (Seq[Vec2], Seq[Vec2], Seq[Vec2], Seq[Vec2]) = {
-      if (points.isEmpty) (tlPoints, trPoints, blPoints, brPoints)
+    def splitPoints(objects: Seq[T], tlBounds: Bounds, tlObjects: Vector[T], trBounds: Bounds, trObjects: Vector[T], blBounds: Bounds, blObjects: Vector[T], brBounds: Bounds, brObjects: Vector[T]): (Seq[T], Seq[T], Seq[T], Seq[T]) = {
+      if (objects.isEmpty) (tlObjects, trObjects, blObjects, brObjects)
       else {
-        val point = points.head
-        val rest = points.tail
-        if (rectContains(point, tlBounds)) splitPoints(rest, tlBounds, tlPoints :+ point, trBounds, trPoints, blBounds, blPoints, brBounds, brPoints)
-        else if (rectContains(point, trBounds)) splitPoints(rest, tlBounds, tlPoints, trBounds, trPoints :+ point, blBounds, blPoints, brBounds, brPoints)
-        else if (rectContains(point, blBounds)) splitPoints(rest, tlBounds, tlPoints, trBounds, trPoints, blBounds, blPoints :+ point, brBounds, brPoints)
-        else if (rectContains(point, brBounds)) splitPoints(rest, tlBounds, tlPoints, trBounds, trPoints, blBounds, blPoints, brBounds, brPoints :+ point)
-        else splitPoints(rest, tlBounds, tlPoints, trBounds, trPoints, blBounds, blPoints, brBounds, brPoints)
+        val obj = objects.head
+        val point = positioned.position(obj)
+        val rest = objects.tail
+        if (rectContains(point, tlBounds)) splitPoints(rest, tlBounds, tlObjects :+ obj, trBounds, trObjects, blBounds, blObjects, brBounds, brObjects)
+        else if (rectContains(point, trBounds)) splitPoints(rest, tlBounds, tlObjects, trBounds, trObjects :+ obj, blBounds, blObjects, brBounds, brObjects)
+        else if (rectContains(point, blBounds)) splitPoints(rest, tlBounds, tlObjects, trBounds, trObjects, blBounds, blObjects :+ obj, brBounds, brObjects)
+        else if (rectContains(point, brBounds)) splitPoints(rest, tlBounds, tlObjects, trBounds, trObjects, blBounds, blObjects, brBounds, brObjects :+ obj)
+        else splitPoints(rest, tlBounds, tlObjects, trBounds, trObjects, blBounds, blObjects, brBounds, brObjects)
       }
     }
 
-    QuadTreeForest(bounds, cluster(bounds, points), positioned)
+    QuadTreeForest(bounds, cluster(bounds, objects))
   }
 }
 
-final case class QuadTreeForest[T](bounds: Bounds, forest: Forest[T], override val positioned: Positioned2D[T]) extends QuadTree[T] {
+final case class QuadTreeForest[T](bounds: Bounds, forest: Forest[T])(implicit p: Positioned2D[T]) extends QuadTree[T] {
   val quadrants: Seq[QuadTree[T]] = Seq(forest._1, forest._2, forest._3, forest._4)
 
+
+  override def positioned: Positioned2D[T] = p
 
   override def contains(point: Vec2): Boolean = {
     if (forest._1.contains(point)) true
@@ -102,7 +105,10 @@ final case class QuadTreeForest[T](bounds: Bounds, forest: Forest[T], override v
     quadrants.map(_.selectRect(bounds)).foldLeft(LazyList.empty[T])(_ ++ _)
 }
 
-final case class QuadTreeLeaf[T](bounds: Bounds, points: Seq[T], override val positioned: Positioned2D[T]) extends QuadTree[T] {
+final case class QuadTreeLeaf[T](bounds: Bounds, points: Seq[T])(implicit p: Positioned2D[T]) extends QuadTree[T] {
+
+
+  override def positioned: Positioned2D[T] = p
 
   override def selectRect(bounds: (Vec2, Vec2)): LazyList[T] =
     if (QuadTree.rectsOverlap(this.bounds, bounds)) points.to(LazyList).filter(p => QuadTree.rectContains(positioned.position(p), bounds))
