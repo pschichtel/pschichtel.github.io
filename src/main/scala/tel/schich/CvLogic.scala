@@ -5,6 +5,9 @@ import org.scalajs.dom.window
 import org.scalajs.dom.window._
 import tel.schich.background.GameLoop
 import tel.schich.background.math.{QuadTree, Vec2}
+import tel.schich.background.rendering.{Shader, ShaderProgram}
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object CvLogic {
 
@@ -23,14 +26,16 @@ object CvLogic {
       })
     }
 
+
+
     val canvas = document.querySelector("canvas").asInstanceOf[HTMLCanvasElement]
-    val gl = canvas.getContext("webgl").asInstanceOf[WebGLRenderingContext]
+    implicit val gl = canvas.getContext("webgl").asInstanceOf[WebGLRenderingContext]
+
+    ShaderProgram(Shader.ColoredPointShader).foreach(println)
 
 
     GameLoop.loop(window, Vector.empty[Vec2]) { (objects, dt) =>
       val tree = QuadTree((Vec2(-1, 1), Vec2(1, -1)), objects, 10)
-
-      console.log(s"$tree")
 
       if (objects.size >= 100) None
       else Some(objects :+ Vec2.random)
