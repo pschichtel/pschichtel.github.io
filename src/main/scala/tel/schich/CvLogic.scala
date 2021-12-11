@@ -1,6 +1,6 @@
 package tel.schich
 
-import org.scalajs.dom.raw.{HTMLCanvasElement, MouseEvent, WebGLRenderingContext}
+import org.scalajs.dom.{HTMLCanvasElement, MouseEvent, WebGLRenderingContext}
 import org.scalajs.dom.window
 import org.scalajs.dom.window._
 import tel.schich.background.GameLoop

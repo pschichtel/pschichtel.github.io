@@ -1,6 +1,6 @@
 package tel.schich.background
 
-import org.scalajs.dom.raw.Window
+import org.scalajs.dom.Window
 
 import scala.concurrent.{Future, Promise}
 

@@ -1,75 +1,75 @@
 package tel.schich.background.math
 
-case class Mat4(_11: Double, _21: Double, _31: Double, _41: Double,
-                _12: Double, _22: Double, _32: Double, _42: Double,
-                _13: Double, _23: Double, _33: Double, _43: Double,
-                _14: Double, _24: Double, _34: Double, _44: Double) {
+case class Mat4(v11: Double, v21: Double, v31: Double, v41: Double,
+                v12: Double, v22: Double, v32: Double, v42: Double,
+                v13: Double, v23: Double, v33: Double, v43: Double,
+                v14: Double, v24: Double, v34: Double, v44: Double) {
 
   def multiply(o: Mat4): Mat4 = Mat4(
-    Vec4.dot(_11, _21, _31, _41)(o._11, o._12, o._13, o._14), Vec4.dot(_11, _21, _31, _41)(o._21, o._22, o._23, o._24), Vec4.dot(_11, _21, _31, _41)(o._31, o._32, o._33, o._34), Vec4.dot(_11, _21, _31, _41)(o._41, o._42, o._43, o._44),
-    Vec4.dot(_12, _22, _32, _42)(o._11, o._12, o._13, o._14), Vec4.dot(_12, _22, _32, _42)(o._21, o._22, o._23, o._24), Vec4.dot(_12, _22, _32, _42)(o._31, o._32, o._33, o._34), Vec4.dot(_12, _22, _32, _42)(o._41, o._42, o._43, o._44),
-    Vec4.dot(_13, _23, _33, _43)(o._11, o._12, o._13, o._14), Vec4.dot(_13, _23, _33, _43)(o._21, o._22, o._23, o._24), Vec4.dot(_13, _23, _33, _43)(o._31, o._32, o._33, o._34), Vec4.dot(_13, _23, _33, _43)(o._41, o._42, o._43, o._44),
-    Vec4.dot(_14, _24, _34, _44)(o._11, o._12, o._13, o._14), Vec4.dot(_14, _24, _34, _44)(o._21, o._22, o._23, o._24), Vec4.dot(_14, _24, _34, _44)(o._31, o._32, o._33, o._34), Vec4.dot(_14, _24, _34, _44)(o._41, o._42, o._43, o._44)
+    Vec4.dot(v11, v21, v31, v41)(o.v11, o.v12, o.v13, o.v14), Vec4.dot(v11, v21, v31, v41)(o.v21, o.v22, o.v23, o.v24), Vec4.dot(v11, v21, v31, v41)(o.v31, o.v32, o.v33, o.v34), Vec4.dot(v11, v21, v31, v41)(o.v41, o.v42, o.v43, o.v44),
+    Vec4.dot(v12, v22, v32, v42)(o.v11, o.v12, o.v13, o.v14), Vec4.dot(v12, v22, v32, v42)(o.v21, o.v22, o.v23, o.v24), Vec4.dot(v12, v22, v32, v42)(o.v31, o.v32, o.v33, o.v34), Vec4.dot(v12, v22, v32, v42)(o.v41, o.v42, o.v43, o.v44),
+    Vec4.dot(v13, v23, v33, v43)(o.v11, o.v12, o.v13, o.v14), Vec4.dot(v13, v23, v33, v43)(o.v21, o.v22, o.v23, o.v24), Vec4.dot(v13, v23, v33, v43)(o.v31, o.v32, o.v33, o.v34), Vec4.dot(v13, v23, v33, v43)(o.v41, o.v42, o.v43, o.v44),
+    Vec4.dot(v14, v24, v34, v44)(o.v11, o.v12, o.v13, o.v14), Vec4.dot(v14, v24, v34, v44)(o.v21, o.v22, o.v23, o.v24), Vec4.dot(v14, v24, v34, v44)(o.v31, o.v32, o.v33, o.v34), Vec4.dot(v14, v24, v34, v44)(o.v41, o.v42, o.v43, o.v44)
   )
   def *(other: Mat4): Mat4 = multiply(other)
 
   def multiply(s: Double): Mat4 = Mat4(
-    _11 * s, _21 * s, _31 * s, _41 * s,
-    _12 * s, _22 * s, _32 * s, _42 * s,
-    _13 * s, _23 * s, _33 * s, _43 * s,
-    _14 * s, _24 * s, _34 * s, _44 * s
+    v11 * s, v21 * s, v31 * s, v41 * s,
+    v12 * s, v22 * s, v32 * s, v42 * s,
+    v13 * s, v23 * s, v33 * s, v43 * s,
+    v14 * s, v24 * s, v34 * s, v44 * s
   )
   def *(s: Double): Mat4 = multiply(s)
 
   def divide(s: Double): Mat4 = Mat4(
-    _11 / s, _21 / s, _31 / s, _41 / s,
-    _12 / s, _22 / s, _32 / s, _42 / s,
-    _13 / s, _23 / s, _33 / s, _43 / s,
-    _14 / s, _24 / s, _34 / s, _44 / s
+    v11 / s, v21 / s, v31 / s, v41 / s,
+    v12 / s, v22 / s, v32 / s, v42 / s,
+    v13 / s, v23 / s, v33 / s, v43 / s,
+    v14 / s, v24 / s, v34 / s, v44 / s
   )
   def /(s: Double): Mat4 = divide(s)
 
   def multiply(v: Vec4): Vec4 = Vec4(
-    Vec4.dot(_11, _21, _31, _41)(v.x, v.y, v.z, v.w),
-    Vec4.dot(_12, _22, _32, _42)(v.x, v.y, v.z, v.w),
-    Vec4.dot(_13, _23, _33, _43)(v.x, v.y, v.z, v.w),
-    Vec4.dot(_14, _24, _34, _44)(v.x, v.y, v.z, v.w)
+    Vec4.dot(v11, v21, v31, v41)(v.x, v.y, v.z, v.w),
+    Vec4.dot(v12, v22, v32, v42)(v.x, v.y, v.z, v.w),
+    Vec4.dot(v13, v23, v33, v43)(v.x, v.y, v.z, v.w),
+    Vec4.dot(v14, v24, v34, v44)(v.x, v.y, v.z, v.w)
   )
   def *(v: Vec4): Vec4 = multiply(v)
 
   def transposed: Mat4 = Mat4(
-    _11, _12, _13, _14,
-    _21, _22, _23, _24,
-    _31, _32, _33, _34,
-    _41, _42, _43, _44
+    v11, v12, v13, v14,
+    v21, v22, v23, v24,
+    v31, v32, v33, v34,
+    v41, v42, v43, v44
   )
 
   def inverted: Mat4 = {
     val a = this
-    
+
     val b = Mat4(
-      a._22 * a._33 * a._44 - a._22 * a._34 * a._43 - a._32 * a._23 * a._44 + a._32 * a._24 * a._43 + a._42 * a._23 * a._34 - a._42 * a._24 * a._33,
-      -a._21 * a._33 * a._44 + a._21 * a._34 * a._43 + a._31 * a._23 * a._44 - a._31 * a._24 * a._43 - a._41 * a._23 * a._34 + a._41 * a._24 * a._33,
-      a._21 * a._32 * a._44 - a._21 * a._34 * a._42 - a._31 * a._22 * a._44 + a._31 * a._24 * a._42 + a._41 * a._22 * a._34 - a._41 * a._24 * a._32,
-      -a._21 * a._32 * a._43 + a._21 * a._33 * a._42 + a._31 * a._22 * a._43 - a._31 * a._23 * a._42 - a._41 * a._22 * a._33 + a._41 * a._23 * a._32,
+      a.v22 * a.v33 * a.v44 - a.v22 * a.v34 * a.v43 - a.v32 * a.v23 * a.v44 + a.v32 * a.v24 * a.v43 + a.v42 * a.v23 * a.v34 - a.v42 * a.v24 * a.v33,
+      -a.v21 * a.v33 * a.v44 + a.v21 * a.v34 * a.v43 + a.v31 * a.v23 * a.v44 - a.v31 * a.v24 * a.v43 - a.v41 * a.v23 * a.v34 + a.v41 * a.v24 * a.v33,
+      a.v21 * a.v32 * a.v44 - a.v21 * a.v34 * a.v42 - a.v31 * a.v22 * a.v44 + a.v31 * a.v24 * a.v42 + a.v41 * a.v22 * a.v34 - a.v41 * a.v24 * a.v32,
+      -a.v21 * a.v32 * a.v43 + a.v21 * a.v33 * a.v42 + a.v31 * a.v22 * a.v43 - a.v31 * a.v23 * a.v42 - a.v41 * a.v22 * a.v33 + a.v41 * a.v23 * a.v32,
 
-      -a._12 * a._33 * a._44 + a._12 * a._34 * a._43 + a._32 * a._13 * a._44 - a._32 * a._14 * a._43 - a._42 * a._13 * a._34 + a._42 * a._14 * a._33,
-      a._11 * a._33 * a._44 - a._11 * a._34 * a._43 - a._31 * a._13 * a._44 + a._31 * a._14 * a._43 + a._41 * a._13 * a._34 - a._41 * a._14 * a._33,
-      -a._11 * a._32 * a._44 + a._11 * a._34 * a._42 + a._31 * a._12 * a._44 - a._31 * a._14 * a._42 - a._41 * a._12 * a._34 + a._41 * a._14 * a._32,
-      a._11 * a._32 * a._43 - a._11 * a._33 * a._42 - a._31 * a._12 * a._43 + a._31 * a._13 * a._42 + a._41 * a._12 * a._33 - a._41 * a._13 * a._32,
+      -a.v12 * a.v33 * a.v44 + a.v12 * a.v34 * a.v43 + a.v32 * a.v13 * a.v44 - a.v32 * a.v14 * a.v43 - a.v42 * a.v13 * a.v34 + a.v42 * a.v14 * a.v33,
+      a.v11 * a.v33 * a.v44 - a.v11 * a.v34 * a.v43 - a.v31 * a.v13 * a.v44 + a.v31 * a.v14 * a.v43 + a.v41 * a.v13 * a.v34 - a.v41 * a.v14 * a.v33,
+      -a.v11 * a.v32 * a.v44 + a.v11 * a.v34 * a.v42 + a.v31 * a.v12 * a.v44 - a.v31 * a.v14 * a.v42 - a.v41 * a.v12 * a.v34 + a.v41 * a.v14 * a.v32,
+      a.v11 * a.v32 * a.v43 - a.v11 * a.v33 * a.v42 - a.v31 * a.v12 * a.v43 + a.v31 * a.v13 * a.v42 + a.v41 * a.v12 * a.v33 - a.v41 * a.v13 * a.v32,
 
-      a._12 * a._23 * a._44 - a._12 * a._24 * a._43 - a._22 * a._13 * a._44 + a._22 * a._14 * a._43 + a._42 * a._13 * a._24 - a._42 * a._14 * a._23,
-      -a._11 * a._23 * a._44 + a._11 * a._24 * a._43 + a._21 * a._13 * a._44 - a._21 * a._14 * a._43 - a._41 * a._13 * a._24 + a._41 * a._14 * a._23,
-      a._11 * a._22 * a._44 - a._11 * a._24 * a._42 - a._21 * a._12 * a._44 + a._21 * a._14 * a._42 + a._41 * a._12 * a._24 - a._41 * a._14 * a._22,
-      -a._11 * a._22 * a._43 + a._11 * a._23 * a._42 + a._21 * a._12 * a._43 - a._21 * a._13 * a._42 - a._41 * a._12 * a._23 + a._41 * a._13 * a._22,
+      a.v12 * a.v23 * a.v44 - a.v12 * a.v24 * a.v43 - a.v22 * a.v13 * a.v44 + a.v22 * a.v14 * a.v43 + a.v42 * a.v13 * a.v24 - a.v42 * a.v14 * a.v23,
+      -a.v11 * a.v23 * a.v44 + a.v11 * a.v24 * a.v43 + a.v21 * a.v13 * a.v44 - a.v21 * a.v14 * a.v43 - a.v41 * a.v13 * a.v24 + a.v41 * a.v14 * a.v23,
+      a.v11 * a.v22 * a.v44 - a.v11 * a.v24 * a.v42 - a.v21 * a.v12 * a.v44 + a.v21 * a.v14 * a.v42 + a.v41 * a.v12 * a.v24 - a.v41 * a.v14 * a.v22,
+      -a.v11 * a.v22 * a.v43 + a.v11 * a.v23 * a.v42 + a.v21 * a.v12 * a.v43 - a.v21 * a.v13 * a.v42 - a.v41 * a.v12 * a.v23 + a.v41 * a.v13 * a.v22,
 
-      -a._12 * a._23 * a._34 + a._12 * a._24 * a._33 + a._22 * a._13 * a._34 - a._22 * a._14 * a._33 - a._32 * a._13 * a._24 + a._32 * a._14 * a._23,
-      a._11 * a._23 * a._34 - a._11 * a._24 * a._33 - a._21 * a._13 * a._34 + a._21 * a._14 * a._33 + a._31 * a._13 * a._24 - a._31 * a._14 * a._23,
-      -a._11 * a._22 * a._34 + a._11 * a._24 * a._32 + a._21 * a._12 * a._34 - a._21 * a._14 * a._32 - a._31 * a._12 * a._24 + a._31 * a._14 * a._22,
-      a._11 * a._22 * a._33 - a._11 * a._23 * a._32 - a._21 * a._12 * a._33 + a._21 * a._13 * a._32 + a._31 * a._12 * a._23 - a._31 * a._13 * a._22
+      -a.v12 * a.v23 * a.v34 + a.v12 * a.v24 * a.v33 + a.v22 * a.v13 * a.v34 - a.v22 * a.v14 * a.v33 - a.v32 * a.v13 * a.v24 + a.v32 * a.v14 * a.v23,
+      a.v11 * a.v23 * a.v34 - a.v11 * a.v24 * a.v33 - a.v21 * a.v13 * a.v34 + a.v21 * a.v14 * a.v33 + a.v31 * a.v13 * a.v24 - a.v31 * a.v14 * a.v23,
+      -a.v11 * a.v22 * a.v34 + a.v11 * a.v24 * a.v32 + a.v21 * a.v12 * a.v34 - a.v21 * a.v14 * a.v32 - a.v31 * a.v12 * a.v24 + a.v31 * a.v14 * a.v22,
+      a.v11 * a.v22 * a.v33 - a.v11 * a.v23 * a.v32 - a.v21 * a.v12 * a.v33 + a.v21 * a.v13 * a.v32 + a.v31 * a.v12 * a.v23 - a.v31 * a.v13 * a.v22
     )
 
-    val det = a._11 * b._11 + a._21 * b._12 + a._31 * b._13 + a._41 * b._14
+    val det = a.v11 * b.v11 + a.v21 * b.v12 + a.v31 * b.v13 + a.v41 * b.v14
 
     b / det
   }

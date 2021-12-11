@@ -2,8 +2,8 @@ package tel.schich.background.rendering
 
 import java.util.regex.Pattern
 
-import org.scalajs.dom.raw.WebGLRenderingContext
-import sttp.client._
+import org.scalajs.dom.WebGLRenderingContext
+import sttp.client3._
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -12,6 +12,8 @@ import scala.concurrent.Future
 case class Shader(vertex: String, fragment: String, inputs: Set[String], uniforms: Set[String])
 
 object Shader {
+  val backend = FetchBackend()
+
   private val GLES3VersionRegex = "^\\s*#version\\s+3\\d\\d".r
   private val GLESInputsRegex = Pattern.compile("^\\s*attribute\\s+\\S+\\s+([^\\s;]+)\\s*;", Pattern.MULTILINE)
   private val GLES3InputsRegex = Pattern.compile("^\\s*in\\s+\\S+\\s+([^\\s;]+)\\s*;", Pattern.MULTILINE)
@@ -70,8 +72,7 @@ object Shader {
     loadShader(s"$baseUrl.vert", s"$baseUrl.frag")
 
   def loadShader(vertexUrl: String, fragmentUrl: String): Future[Either[String, Shader]] = {
-    implicit val backend = FetchBackend()
-    Future.sequence(Seq(vertexUrl, fragmentUrl).map(ext => basicRequest.get(uri"$ext").send())) map {
+    Future.sequence(Seq(vertexUrl, fragmentUrl).map(ext => basicRequest.get(uri"$ext").send(backend))) map {
       case Seq(vertResponse, fragResponse) =>
         for {
           vert <- vertResponse.body
