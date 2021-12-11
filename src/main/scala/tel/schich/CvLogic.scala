@@ -2,7 +2,7 @@ package tel.schich
 
 import org.scalajs.dom.{HTMLCanvasElement, MouseEvent, WebGLRenderingContext}
 import org.scalajs.dom.window
-import org.scalajs.dom.window._
+import org.scalajs.dom.window.document
 import tel.schich.background.GameLoop
 import tel.schich.background.math.{QuadTree, Vec2}
 import tel.schich.background.rendering.{Shader, ShaderProgram}

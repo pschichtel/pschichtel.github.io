@@ -11,3 +11,4 @@ libraryDependencies ++= Seq(
   "com.softwaremill.sttp.client3" %%% "core" % "3.3.18"
 )
 
+scalacOptions ++= Seq("--unchecked", "--deprecation")

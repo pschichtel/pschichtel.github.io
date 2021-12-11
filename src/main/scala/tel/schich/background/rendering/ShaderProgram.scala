@@ -1,6 +1,6 @@
 package tel.schich.background.rendering
 
-import org.scalajs.dom.raw.{WebGLProgram, WebGLRenderingContext, WebGLShader, WebGLUniformLocation}
+import org.scalajs.dom.{WebGLProgram, WebGLRenderingContext, WebGLShader, WebGLUniformLocation}
 
 case class ShaderProgram(source: Shader, program: WebGLProgram, inputLocations: Map[String, Int], uniformLocations: Map[String, WebGLUniformLocation]) {
   def delete()(implicit gl: WebGLRenderingContext): Boolean = {
@@ -46,11 +46,11 @@ object ShaderProgram {
   }
 
   def apply(shader: Shader)(implicit gl: WebGLRenderingContext): Either[String, ShaderProgram] = {
-    compileShader(shader.vertex, WebGLRenderingContext.VERTEX_SHADER).flatMap { vertexShader =>
-      compileShader(shader.fragment, WebGLRenderingContext.FRAGMENT_SHADER).flatMap { fragmentShader =>
-        linkProgram(vertexShader, fragmentShader)
-      }
-    } map { program =>
+    for {
+      vertexShader <- compileShader(shader.vertex, WebGLRenderingContext.VERTEX_SHADER)
+      fragmentShader <- compileShader(shader.fragment, WebGLRenderingContext.FRAGMENT_SHADER)
+      program <- linkProgram(vertexShader, fragmentShader)
+    } yield {
       val inputLocations = shader.inputs.map(i => (i, gl.getAttribLocation(program, i))).toMap
       val uniformLocation = shader.uniforms.map(u => (u, gl.getUniformLocation(program, u))).toMap
       ShaderProgram(shader, program, inputLocations, uniformLocation)

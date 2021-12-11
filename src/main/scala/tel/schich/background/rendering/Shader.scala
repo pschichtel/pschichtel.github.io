@@ -12,7 +12,7 @@ import scala.concurrent.Future
 case class Shader(vertex: String, fragment: String, inputs: Set[String], uniforms: Set[String])
 
 object Shader {
-  val backend = FetchBackend()
+  private val backend = FetchBackend()
 
   private val GLES3VersionRegex = "^\\s*#version\\s+3\\d\\d".r
   private val GLESInputsRegex = Pattern.compile("^\\s*attribute\\s+\\S+\\s+([^\\s;]+)\\s*;", Pattern.MULTILINE)

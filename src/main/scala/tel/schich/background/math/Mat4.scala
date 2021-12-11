@@ -84,8 +84,8 @@ object Mat4 {
   )
 
   def perspectiveProjection(fieldOfViewYInRadians: Double, aspect: Double, near: Double, far: Double): Mat4 = {
-    val f = Math.tan((Math.PI / 2) - (fieldOfViewYInRadians / 2));
-    val rangeInv = 1.0 / (near - far);
+    val f = Math.tan((Math.PI / 2) - (fieldOfViewYInRadians / 2))
+    val rangeInv = 1.0 / (near - far)
 
     Mat4(
       f / aspect, 0, 0,                         0,
