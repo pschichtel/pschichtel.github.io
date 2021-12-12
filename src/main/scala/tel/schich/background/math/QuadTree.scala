@@ -1,119 +1,232 @@
 package tel.schich.background.math
 
-import tel.schich.background.math.QuadTree.{Bounds, Forest}
+import scala.collection.mutable.Stack
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
 
-import scala.annotation.tailrec
+/*
+  This is all based on https://stackoverflow.com/questions/41946007/efficient-and-well-explained-implementation-of-a-quadtree-for-2d-collision-det
+*/
 
-trait Positioned2D[T] {
-  def position(obj: T): Vec2
-}
+case class QuadTreeNodeData(
+    val index: Int,
+    val depth: Int,
+    val middleX: Float,
+    val middleY: Float,
+    val halfWidth: Float,
+    val halfHeight: Float
+)
+case class QuadTreeNode(val firstChild: Int, val count: Int)
+case class QuadTreeElement(
+    val id: Int,
+    val left: Float,
+    top: Float,
+    right: Float,
+    bottom: Float
+)
+type QuadTreeElementNode = List[Int]
 
-sealed trait QuadTree[T] {
-  def positioned: Positioned2D[T]
+class QuadTree(
+    center: Vec2,
+    halfSize: Vec2,
+    val maxDepth: Int,
+    val maxLeafSize: Int
+) {
+  private val nodes = ArrayBuffer(QuadTreeNode(-1, -1))
+  private val leaves = ArrayBuffer[QuadTreeElementNode]()
+  private val elements = ArrayBuffer[QuadTreeElement]()
+  private val elementNodes = HashMap[Int, QuadTreeElementNode]()
+  private var elementNodeNextIndex = 0
+  private val rootData = QuadTreeNodeData(
+    0,
+    0,
+    center.x.toFloat,
+    center.y.toFloat,
+    halfSize.x.toFloat,
+    halfSize.y.toFloat
+  )
 
-  def contains(point: Vec2): Boolean
-  def contains(obj: T): Boolean = contains(positioned.position(obj))
+  def query(topLeft: Vec2, bottomRight: Vec2): IndexedSeq[Int] = query(topLeft, bottomRight, -1)
 
-  def selectRect(bounds: Bounds): LazyList[T]
+  def query(topLeft: Vec2, bottomRight: Vec2, omitElement: Int): IndexedSeq[Int] =
+    query(topLeft.x.toFloat, topLeft.y.toFloat, bottomRight.x.toFloat, bottomRight.y.toFloat, omitElement)
 
-  def selectCircle(center: Vec2, radius: Double): LazyList[T] = {
-    val tl = Vec2(center.x - radius, center.y + radius)
-    val br = Vec2(center.x + radius, center.y - radius)
-    val radiusSqr = radius * radius
-    selectRect((tl, br)).filter(obj => positioned.position(obj).distanceSquared(center) <= radiusSqr)
+  private def query(left: Float, top: Float, right: Float, bottom: Float, omitElement: Int): IndexedSeq[Int] = {
+    val leaves = findLeaves(rootData, left, top, right, bottom)
+
+    val seen = HashSet[Int]()
+    val out = ArrayBuffer[Int]()
+
+    for (leafData <- leaves) {
+      val node = nodes(leafData.index)
+      val firstChild = node.firstChild
+      if (firstChild != -1) {
+        for (elementIndex <- elementNodes(firstChild)) {
+          val element = elements(elementIndex)
+          if (!seen.contains(element.id) && (element.id != omitElement || omitElement == -1) && intersect(left, top, right, bottom, element.left, element.top, element.right, element.bottom)) {
+            out.addOne(element.id)
+            seen.add(element.id)
+          }
+        }
+      }
+    }
+    
+
+    out.toIndexedSeq
   }
-}
 
-object QuadTree {
-  type Bounds = (Vec2, Vec2)
-  type Forest[T] = (QuadTree[T], QuadTree[T], QuadTree[T], QuadTree[T])
+  private def intersect(l1: Float, t1: Float,r1: Float, b1: Float, l2: Float, t2: Float, r2: Float, b2: Float): Boolean =
+    l2 <= r1 && r2 >= l1 && t2 <= b1 && b2 >= t1
 
-  def rectContains(p: Vec2, bounds: Bounds): Boolean =
-    p.x >= bounds._1.x && p.x < bounds._2.x && p.y <= bounds._1.y && p.y > bounds._2.y
+  def insert(id: Int, topLeft: Vec2, bottomRight: Vec2): Unit = {
+    val elementIndex = elements.size
+    val element = QuadTreeElement(
+      id,
+      topLeft.x.toFloat,
+      topLeft.y.toFloat,
+      bottomRight.x.toFloat,
+      bottomRight.y.toFloat
+    )
+    elements.addOne(element)
+    insertNode(rootData, elementIndex)
+  }
 
-  def rectsOverlap(a: Bounds, b: Bounds): Boolean =
-    if (a._1.x > b._2.x || b._1.x > a._2.x) false
-    else if (a._1.y < b._2.y || b._1.y < a._2.y) false
-    else true
+  private def insertNode(
+      root: QuadTreeNodeData,
+      elementIndex: Int
+  ): Unit = {
+    val element = elements(elementIndex)
+    val intersectingLeafNodes =
+      findLeaves(root, element.left, element.top, element.right, element.bottom)
 
-  def apply[T](bounds: Bounds, objects: Seq[T], limit: Int = 20)(implicit positioned: Positioned2D[T]): QuadTree[T] = {
-    def cluster(bounds: Bounds, objects: Seq[T]): Forest[T] = {
+    for (leaf <- intersectingLeafNodes) {
+      insertLeaf(leaf, elementIndex)
+    }
+  }
 
-      val (tl, br) = bounds
-
-      val midX = tl.x + (br.x - tl.x) / 2.0
-      val midY = tl.y - (tl.y - br.y) / 2.0
-
-      val topCenter = Vec2(midX, tl.y)
-      val leftCenter = Vec2(tl.x, midY)
-      val middleCenter = Vec2(midX, midY)
-      val rightCenter = Vec2(br.x, midY)
-      val bottomCenter = Vec2(midX, br.y)
-
-      val topLeftBounds = (tl, middleCenter)
-      val topRightBounds = (topCenter, rightCenter)
-      val bottomLeftBounds = (leftCenter, bottomCenter)
-      val bottomRightBounds = (middleCenter, br)
-
-      val (topLeftPoints, topRightPoints, bottomLeftPoints, bottomRightPoints) =
-        splitPoints(objects, topLeftBounds, Vector.empty, topRightBounds, Vector.empty, bottomLeftBounds, Vector.empty, bottomRightBounds, Vector.empty)
-
-      (makeTree(topLeftBounds, topLeftPoints, limit), makeTree(topRightBounds, topRightPoints, limit),
-        makeTree(bottomLeftBounds, bottomLeftPoints, limit), makeTree(bottomRightBounds, bottomRightPoints, limit))
+  private def insertLeaf(
+      data: QuadTreeNodeData,
+      elementIndex: Int
+  ): Unit = {
+    val initialNode = nodes(data.index)
+    val node = if (initialNode.firstChild == -1) {
+      val elementNodeIndex = elementNodeNextIndex
+      elementNodeNextIndex += 1
+      elementNodes.put(elementNodeIndex, elementIndex :: Nil)
+      val updatedNode = initialNode.copy(firstChild = elementNodeIndex)
+      nodes(data.index) = updatedNode
+      updatedNode
+    } else {
+      elementNodes(initialNode.firstChild) =
+        elementIndex :: elementNodes(initialNode.firstChild)
+      initialNode
     }
 
-    @inline
-    def makeTree(bounds: Bounds, points: Seq[T], limit: Int): QuadTree[T] = {
-      if (points.length <= limit) QuadTreeLeaf(bounds, points)
-      else QuadTreeForest(bounds, cluster(bounds, points))
-    }
+    if (node.count >= maxLeafSize && data.depth < maxDepth) {
+      val newFirstChild = nodes.size
+      
+      nodes.addOne(QuadTreeNode(-1, -1))
+      nodes.addOne(QuadTreeNode(-1, -1))
+      nodes.addOne(QuadTreeNode(-1, -1))
+      nodes.addOne(QuadTreeNode(-1, -1))
 
-    @tailrec
-    def splitPoints(objects: Seq[T], tlBounds: Bounds, tlObjects: Vector[T], trBounds: Bounds, trObjects: Vector[T], blBounds: Bounds, blObjects: Vector[T], brBounds: Bounds, brObjects: Vector[T]): (Seq[T], Seq[T], Seq[T], Seq[T]) = {
-      if (objects.isEmpty) (tlObjects, trObjects, blObjects, brObjects)
-      else {
-        val obj = objects.head
-        val point = positioned.position(obj)
-        val rest = objects.tail
-        if (rectContains(point, tlBounds)) splitPoints(rest, tlBounds, tlObjects :+ obj, trBounds, trObjects, blBounds, blObjects, brBounds, brObjects)
-        else if (rectContains(point, trBounds)) splitPoints(rest, tlBounds, tlObjects, trBounds, trObjects :+ obj, blBounds, blObjects, brBounds, brObjects)
-        else if (rectContains(point, blBounds)) splitPoints(rest, tlBounds, tlObjects, trBounds, trObjects, blBounds, blObjects :+ obj, brBounds, brObjects)
-        else if (rectContains(point, brBounds)) splitPoints(rest, tlBounds, tlObjects, trBounds, trObjects, blBounds, blObjects, brBounds, brObjects :+ obj)
-        else splitPoints(rest, tlBounds, tlObjects, trBounds, trObjects, blBounds, blObjects, brBounds, brObjects)
+
+      val elements = elementNodes.remove(node.firstChild).get
+      nodes(data.index) = node.copy(firstChild = newFirstChild)
+
+      for (element <- elements) {
+        insertNode(data, element)
+      }
+    } else {
+      nodes(data.index) = node.copy(count = node.count + 1)
+    }
+  }
+
+  private def findLeaves(
+      root: QuadTreeNodeData,
+      queryLeft: Float,
+      queryTop: Float,
+      queryRight: Float,
+      queryBottom: Float
+  ): IndexedSeq[QuadTreeNodeData] = {
+
+    val out = ArrayBuffer[QuadTreeNodeData]()
+    val process = Stack[QuadTreeNodeData]()
+    process.push(rootData)
+
+    while (!process.isEmpty) {
+      val data = process.pop()
+      val node = nodes(data.index)
+
+      if (node.count != -1) {
+        out.addOne(data)
+      } else {
+        val firstChild = node.firstChild
+
+        val newHalfWidth = data.halfWidth / 2f
+        val newHalfHeight = data.halfHeight / 2f
+        val left = data.middleX - newHalfWidth
+        val top = data.middleY - newHalfHeight
+        val right = data.middleX + newHalfWidth
+        val bottom = data.middleY + newHalfHeight
+
+        if (queryTop <= data.middleY) {
+          if (queryLeft <= data.middleX) {
+            process.push(
+              QuadTreeNodeData(
+                firstChild,
+                data.depth + 1,
+                left,
+                top,
+                newHalfWidth,
+                newHalfHeight
+              )
+            )
+          }
+          if (right > data.middleX) {
+            process.push(
+              QuadTreeNodeData(
+                firstChild + 1,
+                data.depth + 1,
+                right,
+                top,
+                newHalfWidth,
+                newHalfHeight
+              )
+            )
+          }
+        }
+
+        if (queryBottom > data.middleY) {
+          if (queryLeft <= data.middleX) {
+            process.push(
+              QuadTreeNodeData(
+                firstChild + 2,
+                data.depth + 1,
+                left,
+                bottom,
+                newHalfWidth,
+                newHalfHeight
+              )
+            )
+          }
+          if (queryRight > data.middleX) {
+            process.push(
+              QuadTreeNodeData(
+                firstChild + 3,
+                data.depth + 1,
+                right,
+                bottom,
+                newHalfWidth,
+                newHalfHeight
+              )
+            )
+          }
+        }
       }
     }
 
-    QuadTreeForest(bounds, cluster(bounds, objects))
+    out.toIndexedSeq
   }
-}
-
-final case class QuadTreeForest[T](bounds: Bounds, forest: Forest[T])(implicit p: Positioned2D[T]) extends QuadTree[T] {
-  val quadrants: Seq[QuadTree[T]] = Seq(forest._1, forest._2, forest._3, forest._4)
-
-
-  override def positioned: Positioned2D[T] = p
-
-  override def contains(point: Vec2): Boolean = {
-    if (forest._1.contains(point)) true
-    else if (forest._2.contains(point)) true
-    else if (forest._3.contains(point)) true
-    else if (forest._4.contains(point)) true
-    else false
-  }
-
-  override def selectRect(bounds: (Vec2, Vec2)): LazyList[T] =
-    quadrants.map(_.selectRect(bounds)).foldLeft(LazyList.empty[T])(_ ++ _)
-}
-
-final case class QuadTreeLeaf[T](bounds: Bounds, points: Seq[T])(implicit p: Positioned2D[T]) extends QuadTree[T] {
-
-
-  override def positioned: Positioned2D[T] = p
-
-  override def selectRect(bounds: (Vec2, Vec2)): LazyList[T] =
-    if (QuadTree.rectsOverlap(this.bounds, bounds)) points.to(LazyList).filter(p => QuadTree.rectContains(positioned.position(p), bounds))
-    else LazyList.empty
-
-  override def contains(point: Vec2): Boolean =
-    QuadTree.rectContains(point, bounds)
 }

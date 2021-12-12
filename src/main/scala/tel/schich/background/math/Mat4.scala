@@ -80,7 +80,7 @@ object Mat4 {
     1, 0, 0, 0,
     0, 1, 0, 0,
     0, 0, 1, 0,
-    0, 0, 0, 1
+    0, 0, 0, 1,
   )
 
   def perspectiveProjection(fieldOfViewYInRadians: Double, aspect: Double, near: Double, far: Double): Mat4 = {
