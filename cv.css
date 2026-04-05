@@ -75,6 +75,8 @@ section#aboutme > div > div:first-of-type {
     margin-left: 5em;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-wrap: nowrap;
+    flex-grow: 1;
 }
 
 

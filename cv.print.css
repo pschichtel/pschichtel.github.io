@@ -45,3 +45,7 @@ canvas {
 a[href^="http"].printable:after {
     content: ' (' attr(href) ')';
 }
+
+#open-source-refs a::after {
+    content: " (" attr(href) ")";
+}
