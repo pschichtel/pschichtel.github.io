@@ -18,10 +18,9 @@ body.dark a {
     color: #0094ff;
 }
 
-.fa-telegram {
+.icon-telegram:before {
     color: #30a8dc;
 }
-
-.fa-whatsapp {
+.icon-whatsapp:before {
     color: #25d366;
 }
