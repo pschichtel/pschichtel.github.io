@@ -24,3 +24,7 @@ body.dark a {
 .icon-whatsapp:before {
     color: #25d366;
 }
+
+.print-only {
+    display: none;
+}

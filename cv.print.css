@@ -49,3 +49,8 @@ a[href^="http"].printable:after {
 #open-source-refs a::after {
     content: " (" attr(href) ")";
 }
+
+.screen-only {
+    display: none;
+}
+
