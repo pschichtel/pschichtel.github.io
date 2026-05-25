@@ -51,6 +51,6 @@ a[href^="http"].printable:after {
 }
 
 .screen-only {
-    display: none;
+    display: none !important;
 }
 

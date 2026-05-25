@@ -26,5 +26,5 @@ body.dark a {
 }
 
 .print-only {
-    display: none;
+    display: none !important;
 }
